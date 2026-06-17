@@ -1,0 +1,76 @@
+# =====================================
+# SEMANA A PLANIFICAR
+# =====================================
+
+FECHA_INICIO_SEMANA = "2026-03-09"
+
+# =====================================
+# SOLVER
+# =====================================
+
+MODO_SOLVER = "PATRONES" # "LIBRE" o "PATRONES"
+
+# =====================================
+# DEBUG:
+# - MODO_DEBUG: Si es True, se mostrarán mensajes de depuración adicionales.
+# =====================================
+
+MODO_DEBUG = True
+
+# =====================================
+# MOSTRAR_CALENDARIO: Si es True, se mostrará un calendario visual de la semana planificada.
+# ===================================== 
+MOSTRAR_CALENDARIO = True
+
+# =====================================
+# PERMITIR_VARIANTES_ENTRADA: Si es True, se permitirá modificar en media hora las entradas de los patrones históricos.
+# =====================================
+
+PERMITIR_VARIANTES_ENTRADA = True
+
+# =====================================
+# PERMITIR_VARIANTES_DURACION: Si es True, se permitirá modificar en media hora las duraciones de los patrones históricos.
+# =====================================
+
+PERMITIR_VARIANTES_DURACION = True
+
+# =====================================
+# DESCANSOS
+# =====================================
+
+ACTIVAR_DESCANSOS = False
+
+# =====================================
+# SELECCION TRABAJADORES
+# =====================================
+
+USAR_FECHA_BAJA = False
+
+# =====================================
+# TURNOS BLOQUEADOS, SI SE QUIERE USAR, DEBE EXISTIR EL ARCHIVO "turnos_bloqueados.xlsx"
+# =====================================
+
+USAR_TURNOS_BLOQUEADOS = False
+
+# =====================================
+# PESO PARA PREMIAR DIAS LIBRES JUNTOS
+# =====================================
+
+PESO_LIBRES_CONSECUTIVOS = 0
+
+# =====================================
+# Cada persona que abra por la mañana se queda hasta las 21:00
+# =====================================
+
+OBLIGAR_APERTURA_HASTA_21 = False
+
+# =====================================
+# MINIMO PERSONAL TARDE
+# =====================================
+
+ACTIVAR_MIN_PERSONAS_TARDE = False
+
+MIN_PERSONAS_TARDE = 2
+
+HORA_INICIO_MIN_PERSONAS = "15:00"
+HORA_FIN_MIN_PERSONAS = "21:00"

@@ -1,0 +1,108 @@
+import pandas as pd
+
+
+def cargar_horarios_base(
+    temporada
+):
+
+    horarios = pd.read_excel(
+        "data/inputs/horario_base.xlsx"
+    )
+
+    temporadas = pd.read_excel(
+        "data/inputs/temporada.xlsx"
+    )
+
+    print("\nDEBUG HORARIO_BASE\n")
+
+    print(
+        horarios[
+            [
+                "dia_semana",
+                "apertura",
+                "cierre"
+            ]
+        ].head(10)
+    )
+
+    print(
+        type(
+            horarios.iloc[0]["apertura"]
+        )
+    )
+
+    print(
+        type(
+            horarios.iloc[0]["cierre"]
+        )
+    )
+
+    id_temporada = int(
+
+        temporadas.loc[
+            temporadas["nombre"]
+            == temporada,
+            "id"
+        ].iloc[0]
+
+    )
+
+    horarios = horarios[
+
+        horarios["id_temporada"]
+        ==
+        id_temporada
+
+    ]
+
+    dias_map = {
+
+        "lunes": "Monday",
+        "martes": "Tuesday",
+        "miercoles": "Wednesday",
+        "jueves": "Thursday",
+        "viernes": "Friday",
+        "sabado": "Saturday",
+        "domingo": "Sunday"
+
+    }
+
+    resultado = {}
+
+    for _, fila in horarios.iterrows():
+
+        apertura = None
+        cierre = None
+
+        if pd.notna(fila["apertura"]):
+
+            apertura = fila["apertura"].strftime(
+                "%H:%M"
+            )
+
+        if pd.notna(fila["cierre"]):
+
+            cierre = fila["cierre"].strftime(
+                "%H:%M"
+            )
+
+        resultado[
+            dias_map[
+                fila["dia_semana"]
+            ]
+        ] = {
+
+            "abierto":
+            int(
+                fila["abierto"]
+            ),
+
+            "apertura":
+            apertura,
+
+            "cierre":
+            cierre
+
+        }
+
+    return resultado
