@@ -28,11 +28,12 @@ from mod_solver import (
     resolver_scheduler
 )
 from mod_solver_libre import (
-    resolver_scheduler as resolver_scheduler_libre
+    resolver_scheduler_libre
 )
 from mod_turnos_bloqueados import *
 from mod_horarios_base import *
 from mod_turnos_libres import *
+from mod_cobertura_turnos import *
 
 # =====================================
 # CABECERA
@@ -116,6 +117,23 @@ print(
     len(turnos_libres)
 )
 
+cobertura_turnos = generar_cobertura_turnos(
+    turnos_libres
+)
+
+print("\n========================")
+print("COBERTURA TURNOS")
+print("========================\n")
+
+print(
+    cobertura_turnos.head(30)
+)
+
+print(
+    "\nTotal registros:",
+    len(cobertura_turnos)
+)
+
 # =====================================
 # DEMANDA
 # =====================================
@@ -124,25 +142,42 @@ demanda = extraer_demanda(
     temporada
 )
 
-if MODO_DEBUG:
+print("\n========================")
+print("DEMANDA")
+print("========================\n")
 
-    print("\n========================")
-    print("DEMANDA")
-    print("========================\n")
+print(
+    demanda.head(30)
+)
 
-    print(
-        demanda.head(20)
+print(
+    "\nTotal registros:",
+    len(demanda)
+)
+
+print("\n========================")
+print("DIAS DEMANDA")
+print("========================\n")
+
+print(
+    sorted(
+        demanda["dia_semana"]
+        .unique()
+        .tolist()
     )
+)
 
-    print(
-        "\nTotal slots:",
-        len(demanda)
-    )
+print("\n========================")
+print("DIAS COBERTURA")
+print("========================\n")
 
-    print(
-        "Demanda total:",
-        demanda["demanda"].sum()
+print(
+    sorted(
+        cobertura_turnos["dia"]
+        .unique()
+        .tolist()
     )
+)
 
 # =====================================
 # PATRONES HISTORICOS
@@ -352,6 +387,7 @@ if MODO_DEBUG:
 
 if MODO_SOLVER == "PATRONES":
 
+
     print("\nSOLVER: PATRONES")
 
     calendario = resolver_scheduler(
@@ -362,7 +398,8 @@ if MODO_SOLVER == "PATRONES":
         reglas,
         modo_planificacion,
         turnos_bloqueados,
-        horarios_base
+        horarios_base,
+        temporada
     )
 
 elif MODO_SOLVER == "LIBRE":
@@ -373,10 +410,12 @@ elif MODO_SOLVER == "LIBRE":
         activos,
         demanda,
         turnos_libres,
+        cobertura_turnos,
         reglas,
         modo_planificacion,
         turnos_bloqueados,
-        horarios_base
+        horarios_base,
+        temporada
     )
 
 else:
