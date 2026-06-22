@@ -12,7 +12,8 @@ def resolver_scheduler(
     reglas,
     modo_planificacion,
     turnos_bloqueados,
-    horarios_base
+    horarios_base,
+    temporada
 ):
 
     # =====================================
@@ -220,6 +221,24 @@ def resolver_scheduler(
         demanda.groupby("dia_semana")["demanda"].sum()
     )
 
+    print("\nDEMANDA VIERNES TARDE")
+    print(
+        demanda[
+            (demanda["dia_semana"] == "Friday")
+            &
+            (demanda["hora"] >= "00:00")
+        ]
+    )
+
+    print("\nDEMANDA SABADO TARDE")
+    print(
+        demanda[
+            (demanda["dia_semana"] == "Saturday")
+            &
+            (demanda["hora"] >= "00:00")
+        ]
+    )
+
     # =====================================
     # MODELO
     # =====================================
@@ -259,6 +278,143 @@ def resolver_scheduler(
                         x[w, dia, p] == 0
                     )
 
+    # # =====================================
+    # # PATRONES FUERA DE HORARIO
+    # # =====================================
+
+    # for dia in dias:
+
+    #     if not horarios_base[dia]["abierto"]:
+    #         continue
+
+    #     cierre_txt = horarios_base[dia]["cierre"]
+
+    #     cierre = pd.to_datetime(
+    #         cierre_txt,
+    #         format="%H:%M"
+    #     )
+
+    #     # si el cierre es de madrugada
+    #     if cierre.hour < 6:
+    #         cierre += pd.Timedelta(days=1)
+
+    #     for _, patron in patrones.iterrows():
+
+    #         entrada = pd.to_datetime(
+    #             patron["entrada_norm"],
+    #             format="%H:%M"
+    #         )
+
+    #         salida = (
+    #             entrada
+    #             + pd.Timedelta(
+    #                 hours=float(
+    #                     patron["duracion_norm"]
+    #                 )
+    #             )
+    #         )
+
+    #         # patrón termina después del cierre
+    #         if salida > cierre:
+
+    #             for w in activos["id"]:
+
+    #                 model.Add(
+    #                     x[
+    #                         w,
+    #                         dia,
+    #                         patron["patron_id"]
+    #                     ] == 0
+    #                 )
+
+    # print("\nPATRONES ELIMINADOS POR CIERRE")
+
+    # for dia in dias:
+
+    #     if not horarios_base[dia]["abierto"]:
+    #         continue
+
+    #     contador = 0
+
+    #     cierre_txt = horarios_base[dia]["cierre"]
+
+    #     cierre = pd.to_datetime(
+    #         cierre_txt,
+    #         format="%H:%M"
+    #     )
+
+    #     if cierre.hour < 6:
+    #         cierre += pd.Timedelta(days=1)
+
+    #     for _, patron in patrones.iterrows():
+
+    #         entrada = pd.to_datetime(
+    #             patron["entrada_norm"],
+    #             format="%H:%M"
+    #         )
+
+    #         salida = (
+    #             entrada
+    #             + pd.Timedelta(
+    #                 hours=float(
+    #                     patron["duracion_norm"]
+    #                 )
+    #             )
+    #         )
+
+    #         if salida > cierre:
+    #             contador += 1
+
+    #     print(dia, contador)
+
+    # # =====================================
+    # # DEBUG PATRONES FUERA DE HORARIO
+    # # =====================================
+
+    # print("\nPATRONES QUE TERMINAN DESPUES DEL CIERRE")
+
+    # for dia in dias:
+
+    #     if not horarios_base[dia]["abierto"]:
+    #         continue
+
+    #     cierre = horarios_base[dia]["cierre"]
+
+    #     contador = 0
+
+    #     for _, p in patrones.iterrows():
+
+    #         entrada = pd.to_datetime(
+    #             p["entrada_norm"],
+    #             format="%H:%M"
+    #         )
+
+    #         salida = (
+    #             entrada
+    #             + pd.Timedelta(
+    #                 hours=float(
+    #                     p["duracion_norm"]
+    #                 )
+    #             )
+    #         )
+
+    #         salida_txt = salida.strftime("%H:%M")
+
+    #         if cierre < "06:00":
+
+    #             if salida_txt > cierre and salida_txt < "06:00":
+    #                 contador += 1
+
+    #         else:
+
+    #             if salida_txt > cierre:
+    #                 contador += 1
+
+    #     print(
+    #         f"{dia}: {contador}"
+    #     )
+
+
     # =====================================
     # MAX 1 TURNO POR DIA
     # =====================================
@@ -277,6 +433,107 @@ def resolver_scheduler(
                 <= 1
 
             )
+
+    # =====================================
+    # LIBRANZAS FIN DE SEMANA
+    # =====================================
+
+    trabajan_sabado = []
+    trabajan_domingo = []
+
+    for w in activos["id"]:
+
+        trabaja_sabado = model.NewBoolVar(
+            f"sabado_{w}"
+        )
+
+        trabaja_domingo = model.NewBoolVar(
+            f"domingo_{w}"
+        )
+
+        model.Add(
+
+            sum(
+                x[w, "Saturday", p]
+                for p in patrones["patron_id"]
+            )
+
+            >= 1
+
+        ).OnlyEnforceIf(
+            trabaja_sabado
+        )
+
+        model.Add(
+
+            sum(
+                x[w, "Saturday", p]
+                for p in patrones["patron_id"]
+            )
+
+            == 0
+
+        ).OnlyEnforceIf(
+            trabaja_sabado.Not()
+        )
+
+        model.Add(
+
+            sum(
+                x[w, "Sunday", p]
+                for p in patrones["patron_id"]
+            )
+
+            >= 1
+
+        ).OnlyEnforceIf(
+            trabaja_domingo
+        )
+
+        model.Add(
+
+            sum(
+                x[w, "Sunday", p]
+                for p in patrones["patron_id"]
+            )
+
+            == 0
+
+        ).OnlyEnforceIf(
+            trabaja_domingo.Not()
+        )
+
+        trabajan_sabado.append(
+            trabaja_sabado
+        )
+
+        trabajan_domingo.append(
+            trabaja_domingo
+        )
+
+    if temporada.lower() == "verano":
+
+        model.Add(
+            sum(trabajan_sabado)
+            == len(activos) - 1
+        )
+
+        model.Add(
+            sum(trabajan_domingo)
+            == len(activos) - 1
+        )
+
+    else:
+
+        model.Add(
+            sum(trabajan_sabado)
+            == len(activos)
+        )
+
+        model.Add(
+            sum(trabajan_domingo)
+            == len(activos)
+        )
 
     # =====================================
     # DESCANSO ENTRE TURNOS
@@ -650,37 +907,37 @@ def resolver_scheduler(
                             == 0
                         )
 
-    # =====================================
-    # CIERRE CAPACITADO
-    # =====================================
+    # # =====================================
+    # # CIERRE CAPACITADO
+    # # =====================================
 
-    for _, fila in demanda.iterrows():
+    # for _, fila in demanda.iterrows():
 
-        dia = fila["dia_semana"]
+    #     dia = fila["dia_semana"]
 
-        hora = fila["hora"]
+    #     hora = fila["hora"]
 
-        if hora != "23:30":
-            continue
+    #     if hora != "23:30":
+    #         continue
 
-        cobertura_cierre = []
+    #     cobertura_cierre = []
 
-        for w in trabajadores_cierre:
+    #     for w in trabajadores_cierre:
 
-            for p in patrones["patron_id"]:
+    #         for p in patrones["patron_id"]:
 
-                if hora in patron_horas[p]:
+    #             if hora in patron_horas[p]:
 
-                    cobertura_cierre.append(
-                        x[w, dia, p]
-                    )
+    #                 cobertura_cierre.append(
+    #                     x[w, dia, p]
+    #                 )
 
-        if cobertura_cierre:
+    #     if cobertura_cierre:
 
-            model.Add(
-                sum(cobertura_cierre)
-                >= 1
-            )
+    #         model.Add(
+    #             sum(cobertura_cierre)
+    #             >= 1
+    #         )
 
     # =====================================
     # MINIMO PERSONAS EN CIERRE
@@ -1165,6 +1422,24 @@ def resolver_scheduler(
 
     solver.parameters.max_time_in_seconds = 60
 
+    print("\nHORAS SIN PATRONES POSIBLES")
+
+    for _, fila in demanda.iterrows():
+
+        dia = fila["dia_semana"]
+        hora = fila["hora"]
+
+        cobertura = 0
+
+        for p in patrones["patron_id"]:
+
+            if hora in patron_horas[p]:
+                cobertura += 1
+
+        if cobertura == 0:
+
+            print(dia, hora)
+
     print("\nResolviendo...")
 
     status = solver.Solve(
@@ -1174,6 +1449,38 @@ def resolver_scheduler(
     print(
         "Objetivo:",
         solver.ObjectiveValue()
+    )
+
+
+    print("\n===================")
+    print("STATUS SOLVER")
+    print("===================")
+
+    print("status =", status)
+
+    print(
+        "OPTIMAL =",
+        cp_model.OPTIMAL
+    )
+
+    print(
+        "FEASIBLE =",
+        cp_model.FEASIBLE
+    )
+
+    print(
+        "INFEASIBLE =",
+        cp_model.INFEASIBLE
+    )
+
+    print(
+        "MODEL_INVALID =",
+        cp_model.MODEL_INVALID
+    )
+
+    print(
+        "STATUS:",
+        solver.StatusName(status)
     )
 
     if status not in (
@@ -1186,6 +1493,8 @@ def resolver_scheduler(
         )
 
         return None
+    
+    status = solver.Solve(model)
 
     # =====================================
     # RESULTADO

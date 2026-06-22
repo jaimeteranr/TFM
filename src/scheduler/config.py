@@ -2,7 +2,7 @@
 # SEMANA A PLANIFICAR
 # =====================================
 
-FECHA_INICIO_SEMANA = "2026-03-09"
+FECHA_INICIO_SEMANA = "2026-06-15" # Formato: "YYYY-MM-DD"
 
 # =====================================
 # SOLVER
@@ -38,7 +38,7 @@ PERMITIR_VARIANTES_DURACION = True
 # DESCANSOS
 # =====================================
 
-ACTIVAR_DESCANSOS = False
+ACTIVAR_DESCANSOS = True
 
 # =====================================
 # SELECCION TRABAJADORES
@@ -50,25 +50,25 @@ USAR_FECHA_BAJA = False
 # TURNOS BLOQUEADOS, SI SE QUIERE USAR, DEBE EXISTIR EL ARCHIVO "turnos_bloqueados.xlsx"
 # =====================================
 
-USAR_TURNOS_BLOQUEADOS = False
+USAR_TURNOS_BLOQUEADOS = True
 
 # =====================================
 # PESO PARA PREMIAR DIAS LIBRES JUNTOS
 # =====================================
 
-PESO_LIBRES_CONSECUTIVOS = 0
+PESO_LIBRES_CONSECUTIVOS = 5000
 
 # =====================================
 # Cada persona que abra por la mañana se queda hasta las 21:00
 # =====================================
 
-OBLIGAR_APERTURA_HASTA_21 = False
+OBLIGAR_APERTURA_HASTA_21 = True
 
 # =====================================
 # MINIMO PERSONAL TARDE
 # =====================================
 
-ACTIVAR_MIN_PERSONAS_TARDE = False
+ACTIVAR_MIN_PERSONAS_TARDE = True
 
 MIN_PERSONAS_TARDE = 2
 

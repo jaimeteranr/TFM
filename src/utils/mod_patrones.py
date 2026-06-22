@@ -130,9 +130,13 @@ def generar_variantes(
         if PERMITIR_VARIANTES_ENTRADA:
 
             desplazamientos = [
+                -90,
+                -60,
                 -30,
                 0,
-                30
+                30,
+                60,
+                90
             ]
 
         else:
@@ -146,9 +150,15 @@ def generar_variantes(
         if PERMITIR_VARIANTES_DURACION:
 
             variaciones_duracion = [
+                -2.0,
+                -1.5,
+                -1.0,
                 -0.5,
                 0,
-                0.5
+                0.5,
+                1.0,
+                1.5,
+                2.0
             ]
 
         else:

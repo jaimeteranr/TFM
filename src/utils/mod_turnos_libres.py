@@ -48,6 +48,16 @@ def generar_turnos_libres(
                 days=1
             )
 
+        cierre_real = (
+            cierre
+            +
+            pd.Timedelta(
+                minutes=reglas[
+                    "minutos_recogida"
+                ]
+            )
+        )
+
         entrada = apertura - pd.Timedelta(
             minutes=
             reglas["minutos_montaje"]
@@ -86,7 +96,7 @@ def generar_turnos_libres(
 
                 )
 
-                if salida <= cierre:
+                if salida <= cierre_real:
 
                     registros.append({
 
@@ -123,6 +133,13 @@ def generar_turnos_libres(
             "TURNOS GENERADOS:",
             len(registros)
         )
+
+    df_debug = pd.DataFrame(registros)
+
+    print(
+        "SALIDA MAXIMA:",
+        df_debug["salida"].max()
+    )
 
     return pd.DataFrame(
         registros,
