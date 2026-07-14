@@ -1,108 +1,131 @@
 import pandas as pd
 
 
-def cargar_horarios_base(
-    temporada
-):
+class HorariosBaseLoader:
 
-    horarios = pd.read_excel(
-        "data/inputs/horario_base.xlsx"
-    )
+    def __init__(self):
 
-    temporadas = pd.read_excel(
-        "data/inputs/temporada.xlsx"
-    )
+        self.horarios = None
+        self.temporadas = None
 
-    print("\nDEBUG HORARIO_BASE\n")
+    # =====================================
+    # CARGAR HORARIOS BASE
+    # =====================================
 
-    print(
-        horarios[
-            [
-                "dia_semana",
-                "apertura",
-                "cierre"
-            ]
-        ].head(10)
-    )
+    def cargar(
+        self,
+        temporada
+    ):
 
-    print(
-        type(
-            horarios.iloc[0]["apertura"]
+        self.horarios = pd.read_excel(
+            "data/inputs/horario_base.xlsx"
         )
-    )
 
-    print(
-        type(
-            horarios.iloc[0]["cierre"]
+        self.temporadas = pd.read_excel(
+            "data/inputs/temporada.xlsx"
         )
-    )
 
-    id_temporada = int(
+        print("\nDEBUG HORARIO_BASE\n")
 
-        temporadas.loc[
-            temporadas["nombre"]
-            == temporada,
-            "id"
-        ].iloc[0]
+        print(
 
-    )
+            self.horarios[
+                [
+                    "dia_semana",
+                    "apertura",
+                    "cierre"
+                ]
+            ].head(10)
 
-    horarios = horarios[
+        )
 
-        horarios["id_temporada"]
-        ==
-        id_temporada
-
-    ]
-
-    dias_map = {
-
-        "lunes": "Monday",
-        "martes": "Tuesday",
-        "miercoles": "Wednesday",
-        "jueves": "Thursday",
-        "viernes": "Friday",
-        "sabado": "Saturday",
-        "domingo": "Sunday"
-
-    }
-
-    resultado = {}
-
-    for _, fila in horarios.iterrows():
-
-        apertura = None
-        cierre = None
-
-        if pd.notna(fila["apertura"]):
-
-            apertura = fila["apertura"].strftime(
-                "%H:%M"
+        print(
+            type(
+                self.horarios.iloc[0]["apertura"]
             )
+        )
 
-        if pd.notna(fila["cierre"]):
-
-            cierre = fila["cierre"].strftime(
-                "%H:%M"
+        print(
+            type(
+                self.horarios.iloc[0]["cierre"]
             )
+        )
 
-        resultado[
-            dias_map[
-                fila["dia_semana"]
-            ]
-        ] = {
+        id_temporada = int(
 
-            "abierto":
-            int(
-                fila["abierto"]
-            ),
+            self.temporadas.loc[
 
-            "apertura":
-            apertura,
+                self.temporadas["nombre"]
+                == temporada,
 
-            "cierre":
-            cierre
+                "id"
+
+            ].iloc[0]
+
+        )
+
+        horarios = self.horarios[
+
+            self.horarios["id_temporada"]
+
+            == id_temporada
+
+        ].copy()
+
+        dias_map = {
+
+            "lunes": "Monday",
+
+            "martes": "Tuesday",
+
+            "miercoles": "Wednesday",
+
+            "jueves": "Thursday",
+
+            "viernes": "Friday",
+
+            "sabado": "Saturday",
+
+            "domingo": "Sunday"
 
         }
 
-    return resultado
+        resultado = {}
+
+        for _, fila in horarios.iterrows():
+
+            apertura = None
+            cierre = None
+
+            if pd.notna(fila["apertura"]):
+
+                apertura = fila["apertura"].strftime(
+                    "%H:%M"
+                )
+
+            if pd.notna(fila["cierre"]):
+
+                cierre = fila["cierre"].strftime(
+                    "%H:%M"
+                )
+
+            resultado[
+                dias_map[
+                    fila["dia_semana"]
+                ]
+            ] = {
+
+                "abierto":
+                    int(
+                        fila["abierto"]
+                    ),
+
+                "apertura":
+                    apertura,
+
+                "cierre":
+                    cierre
+
+            }
+
+        return resultado

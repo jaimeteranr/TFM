@@ -2,89 +2,97 @@ import pandas as pd
 
 from config import USAR_FECHA_BAJA
 
-def obtener_trabajadores_activos(
-    fecha_inicio_semana
-):
 
-    trabajadores = pd.read_excel(
-        "data/inputs/trabajadores.xlsx"
-    )
+class Trabajadores:
 
-
-    fecha = pd.to_datetime(
+    def obtener_trabajadores_activos(
+        self,
         fecha_inicio_semana
-    )
+    ):
 
-    trabajadores["fecha_alta"] = pd.to_datetime(
-        trabajadores["fecha_alta"],
-        dayfirst=True
-    )
+        trabajadores = pd.read_excel(
+            "data/inputs/trabajadores.xlsx"
+        )
 
-    trabajadores["fecha_baja"] = pd.to_datetime(
-        trabajadores["fecha_baja"],
-        dayfirst=True,
-        errors="coerce"
-    )
+        fecha = pd.to_datetime(
+            fecha_inicio_semana
+        )
 
-    # =========================
-    # MODO FECHAS
-    # =========================
+        trabajadores["fecha_alta"] = pd.to_datetime(
+            trabajadores["fecha_alta"],
+            dayfirst=True
+        )
 
-    if USAR_FECHA_BAJA:
+        trabajadores["fecha_baja"] = pd.to_datetime(
+            trabajadores["fecha_baja"],
+            dayfirst=True,
+            errors="coerce"
+        )
 
-        activos = trabajadores[
+        # =========================
+        # MODO FECHAS
+        # =========================
 
-            (
-                trabajadores["fecha_alta"]
-                <= fecha
-            )
+        if USAR_FECHA_BAJA:
 
-            &
-
-            (
-                trabajadores["fecha_baja"].isna()
-
-                |
+            activos = trabajadores[
 
                 (
-                    trabajadores["fecha_baja"]
-                    >= fecha
+                    trabajadores["fecha_alta"]
+                    <= fecha
                 )
-            )
 
-        ].copy()
+                &
 
-    # =========================
-    # MODO MANUAL
-    # =========================
+                (
 
-    else:
+                    trabajadores["fecha_baja"].isna()
 
-        activos = trabajadores[
+                    |
 
-            trabajadores["Activo"] == 1
+                    (
+                        trabajadores["fecha_baja"]
+                        >= fecha
+                    )
 
-        ].copy()
+                )
 
-    activos = activos.sort_values(
-        "id"
-    )
+            ].copy()
 
-    activos = activos.reset_index(
-        drop=True
-    )
+        # =========================
+        # MODO MANUAL
+        # =========================
 
-    print("\nDEBUG TRABAJADORES")
+        else:
 
-    print(activos[
-        [
-            "id",
-            "nombre",
-            "Activo",
-            "apertura",
-            "cierre"
-        ]
-    ])  
+            activos = trabajadores[
 
+                trabajadores["Activo"] == 1
 
-    return activos
+            ].copy()
+
+        activos = activos.sort_values(
+            "id"
+        )
+
+        activos = activos.reset_index(
+            drop=True
+        )
+
+        print("\nDEBUG TRABAJADORES")
+
+        print(
+
+            activos[
+                [
+                    "id",
+                    "nombre",
+                    "Activo",
+                    "apertura",
+                    "cierre"
+                ]
+            ]
+
+        )
+
+        return activos

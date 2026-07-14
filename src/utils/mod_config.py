@@ -1,39 +1,45 @@
 import pandas as pd
 
-from config import *
 
-# =====================================
-# CARGAR REGLAS
-# =====================================
+class SchedulerConfig:
 
-def cargar_reglas():
+    def __init__(
+        self,
+        fichero="data/inputs/reglas_local.xlsx"
+    ):
 
-    df = pd.read_excel(
-        "data/inputs/reglas_local.xlsx"
-    )
+        self.fichero = fichero
 
-    reglas = dict(
-        zip(
-            df["parametro"],
-            df["valor"]
+        self.reglas = None
+
+    def cargar(self):
+
+        df = pd.read_excel(
+            self.fichero
         )
-    )
 
-    return reglas
+        self.reglas = dict(
 
+            zip(
 
-# =====================================
-# MOSTRAR REGLAS
-# =====================================
+                df["parametro"],
 
-def mostrar_reglas(reglas):
+                df["valor"]
 
-    print("\n========================")
-    print("REGLAS")
-    print("========================\n")
+            )
 
-    for k, v in reglas.items():
-
-        print(
-            f"{k}: {v}"
         )
+
+        return self.reglas
+
+    def mostrar(self):
+
+        print("\n========================")
+        print("REGLAS")
+        print("========================\n")
+
+        for k, v in self.reglas.items():
+
+            print(
+                f"{k}: {v}"
+            )

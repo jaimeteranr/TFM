@@ -3,59 +3,63 @@ import pandas as pd
 from config import USAR_TURNOS_BLOQUEADOS
 
 
-def cargar_turnos_bloqueados():
+class TurnosBloqueados:
 
-    if not USAR_TURNOS_BLOQUEADOS:
+    def cargar_turnos_bloqueados(
+        self
+    ):
 
-        return pd.DataFrame()
+        if not USAR_TURNOS_BLOQUEADOS:
 
-    try:
+            return pd.DataFrame()
 
-        df = pd.read_excel(
-            "data/inputs/turnos_bloqueados.xlsx"
-        )
+        try:
 
-        # =========================
-        # DIA NUMERICO -> TEXTO
-        # =========================
+            df = pd.read_excel(
+                "data/inputs/turnos_bloqueados.xlsx"
+            )
 
-        mapa_dias = {
+            # =========================
+            # DIA NUMÉRICO -> TEXTO
+            # =========================
 
-            1: "Monday",
-            2: "Tuesday",
-            3: "Wednesday",
-            4: "Thursday",
-            5: "Friday",
-            6: "Saturday",
-            7: "Sunday"
+            mapa_dias = {
 
-        }
+                1: "Monday",
+                2: "Tuesday",
+                3: "Wednesday",
+                4: "Thursday",
+                5: "Friday",
+                6: "Saturday",
+                7: "Sunday"
 
-        df["dia"] = df["dia"].map(
-            mapa_dias
-        )
+            }
 
-        # =========================
-        # NORMALIZAR HORA
-        # =========================
+            df["dia"] = df["dia"].map(
+                mapa_dias
+            )
 
-        df["entrada"] = (
+            # =========================
+            # NORMALIZAR HORA
+            # =========================
 
-            df["entrada"]
+            df["entrada"] = (
 
-            .astype(str)
+                df["entrada"]
 
-            .str[:5]
+                .astype(str)
 
-        )
+                .str[:5]
 
-        return df
+            )
 
-    except Exception as e:
+            return df
 
-        print(
-            "Error cargando turnos bloqueados:",
-            e
-        )
+        except Exception as e:
 
-        return pd.DataFrame()
+            print(
+                "Error cargando turnos bloqueados:",
+                e
+            )
+
+            return pd.DataFrame()

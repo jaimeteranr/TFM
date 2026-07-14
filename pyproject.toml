@@ -3,13 +3,3 @@ name = "vacanze"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
-dependencies = [
-    "importlib>=1.0.4",
-    "matplotlib>=3.11.0",
-    "numpy>=2.5.0",
-    "openpyxl>=3.1.5",
-    "ortools>=9.15.6755",
-    "pandas>=3.0.4",
-    "requests>=2.34.2",
-]
