@@ -2,68 +2,67 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 
-# =====================================
-# FUNCIONES
-# =====================================
+class CoberturaPatronesGenerator:
 
-def hora_a_datetime(hora):
+    def __init__(
+        self,
+        patrones
+    ):
 
-    return datetime.strptime(
-        str(hora),
-        "%H:%M"
-    )
+        self.patrones = patrones
 
+    def _hora_a_datetime(
+        self,
+        hora
+    ):
 
-# =====================================
-# COBERTURA PATRONES
-# =====================================
-
-def generar_cobertura_patrones(
-    patrones
-):
-
-    registros = []
-
-    for _, fila in patrones.iterrows():
-
-        patron_id = fila[
-            "patron_id"
-        ]
-
-        entrada = hora_a_datetime(
-            fila["entrada_norm"]
+        return datetime.strptime(
+            str(hora),
+            "%H:%M"
         )
 
-        duracion = float(
-            fila["duracion_norm"]
-        )
+    def generar(self):
 
-        bloques = int(
-            duracion * 2
-        )
+        registros = []
 
-        actual = entrada
+        for _, fila in self.patrones.iterrows():
 
-        for _ in range(bloques):
+            patron_id = fila[
+                "patron_id"
+            ]
 
-            registros.append({
+            entrada = self._hora_a_datetime(
+                fila["entrada_norm"]
+            )
 
-                "patron_id":
-                    patron_id,
+            duracion = float(
+                fila["duracion_norm"]
+            )
 
-                "hora":
-                    actual.strftime(
+            bloques = int(
+                duracion * 2
+            )
+
+            actual = entrada
+
+            for _ in range(bloques):
+
+                registros.append({
+
+                    "patron_id": patron_id,
+
+                    "hora": actual.strftime(
                         "%H:%M"
                     )
 
-            })
+                })
 
-            actual += timedelta(
-                minutes=30
-            )
+                actual += timedelta(
+                    minutes=30
+                )
 
-    cobertura = pd.DataFrame(
-        registros
-    )
+        cobertura = pd.DataFrame(
+            registros
+        )
 
-    return cobertura
+        return cobertura

@@ -1,153 +1,161 @@
 import pandas as pd
 
 
-def generar_turnos_libres(
-    horarios_base,
-    reglas
-):
+class TurnosLibres:
 
-    registros = []
+    def generar_turnos_libres(
+        self,
+        horarios_base,
+        reglas
+    ):
 
-    turno_id = 0
+        registros = []
 
-    min_horas = reglas[
-        "min_horas_dia"
-    ]
+        turno_id = 0
 
-    max_horas = reglas[
-        "max_horas_dias"
-    ]
+        min_horas = reglas[
+            "min_horas_dia"
+        ]
 
-    for dia, info in horarios_base.items():
+        max_horas = reglas[
+            "max_horas_dias"
+        ]
 
-        print("\nHORARIO LEIDO")
+        for dia, info in horarios_base.items():
 
-        print(
-            dia,
-            info["apertura"],
-            info["cierre"]
-        )
+            print("\nHORARIO LEIDO")
 
-        if not info["abierto"]:
-
-            continue
-
-        apertura = pd.to_datetime(
-            info["apertura"],
-            format="%H:%M"
-        )
-
-        cierre = pd.to_datetime(
-            info["cierre"],
-            format="%H:%M"
-        )
-
-        if cierre <= apertura:
-
-            cierre += pd.Timedelta(
-                days=1
+            print(
+                dia,
+                info["apertura"],
+                info["cierre"]
             )
 
-        cierre_real = (
-            cierre
-            +
-            pd.Timedelta(
-                minutes=reglas[
-                    "minutos_recogida"
-                ]
+            if not info["abierto"]:
+
+                continue
+
+            apertura = pd.to_datetime(
+                info["apertura"],
+                format="%H:%M"
             )
-        )
 
-        entrada = apertura - pd.Timedelta(
-            minutes=
-            reglas["minutos_montaje"]
-        )
+            cierre = pd.to_datetime(
+                info["cierre"],
+                format="%H:%M"
+            )
 
-        while entrada <= cierre:
+            if cierre <= apertura:
 
-            duracion = min_horas
-
-            # print("\n----------------")
-            # print(dia)
-            # print("apertura:", apertura)
-            # print("cierre:", cierre)
-            # print("entrada inicial:", entrada)
-
-            # print(
-            #     "probando",
-            #     entrada,
-            #     duracion,
-            #     entrada + pd.Timedelta(hours=duracion)
-            # )
-
-            contador = 0
-
-            while duracion <= max_horas:
-
-                salida = (
-
-                    entrada
-
-                    +
-
-                    pd.Timedelta(
-                        hours=duracion
-                    )
-
+                cierre += pd.Timedelta(
+                    days=1
                 )
 
-                if salida <= cierre_real:
+            cierre_real = (
 
-                    registros.append({
+                cierre
 
-                        "turno_id":
-                        turno_id,
+                +
 
-                        "dia":
-                        dia,
+                pd.Timedelta(
+                    minutes=reglas[
+                        "minutos_recogida"
+                    ]
+                )
 
-                        "entrada":
-                        entrada.strftime(
-                            "%H:%M"
-                        ),
-
-                        "duracion":
-                        duracion,
-
-                        "salida":
-                        salida.strftime(
-                            "%H:%M"
-                        )
-
-                    })
-
-                    turno_id += 1
-
-                duracion += 0.5
-
-            entrada += pd.Timedelta(
-                minutes=30
             )
 
-        print(
-            "TURNOS GENERADOS:",
-            len(registros)
+            entrada = (
+
+                apertura
+
+                -
+
+                pd.Timedelta(
+                    minutes=reglas[
+                        "minutos_montaje"
+                    ]
+                )
+
+            )
+
+            while entrada <= cierre:
+
+                duracion = min_horas
+
+                while duracion <= max_horas:
+
+                    salida = (
+
+                        entrada
+
+                        +
+
+                        pd.Timedelta(
+                            hours=duracion
+                        )
+
+                    )
+
+                    if salida <= cierre_real:
+
+                        registros.append({
+
+                            "turno_id":
+                            turno_id,
+
+                            "dia":
+                            dia,
+
+                            "entrada":
+                            entrada.strftime(
+                                "%H:%M"
+                            ),
+
+                            "duracion":
+                            duracion,
+
+                            "salida":
+                            salida.strftime(
+                                "%H:%M"
+                            )
+
+                        })
+
+                        turno_id += 1
+
+                    duracion += 0.5
+
+                entrada += pd.Timedelta(
+                    minutes=30
+                )
+
+            print(
+                "TURNOS GENERADOS:",
+                len(registros)
+            )
+
+        df_debug = pd.DataFrame(
+            registros
         )
 
-    df_debug = pd.DataFrame(registros)
+        print(
+            "SALIDA MAXIMA:",
+            df_debug["salida"].max()
+        )
 
-    print(
-        "SALIDA MAXIMA:",
-        df_debug["salida"].max()
-    )
+        return pd.DataFrame(
 
-    return pd.DataFrame(
-        registros,
-        columns=[
-            "turno_id",
-            "dia",
-            "entrada",
-            "duracion",
-            "salida"
-        ]
-    )
+            registros,
+
+            columns=[
+
+                "turno_id",
+                "dia",
+                "entrada",
+                "duracion",
+                "salida"
+
+            ]
+
+        )
