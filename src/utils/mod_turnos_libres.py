@@ -1,7 +1,25 @@
+"""
+Módulo encargado de generar el catálogo de turnos libres utilizado por el
+planificador. Todos los turnos posibles.
+
+Construye el conjunto de turnos candidatos a partir de los horarios de
+apertura del establecimiento y de las reglas de planificación definidas por
+el sistema, proporcionando las alternativas que podrán ser asignadas durante
+el proceso de optimización.
+"""
+
 import pandas as pd
 
 
 class TurnosLibres:
+    """
+    Genera los turnos candidatos para la planificación.
+
+    Construye un catálogo de turnos compatibles con los horarios de
+    funcionamiento y las restricciones de duración establecidas por el
+    sistema, proporcionando al planificador el conjunto de alternativas
+    disponibles para la asignación de trabajadores.
+    """
 
     def generar_turnos_libres(
         self,

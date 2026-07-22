@@ -1,7 +1,25 @@
+"""
+Módulo encargado de construir el conjunto de datos diario utilizado para el
+entrenamiento del modelo de predicción de ventas.
+
+Integra la información de ventas, meteorología y eventos, generando las
+variables temporales e históricas necesarias para obtener un dataset
+completo preparado para el entrenamiento y evaluación de los modelos de
+Machine Learning.
+"""
+
 import pandas as pd
 
 
 class DatasetBuilder:
+    """
+    Construye el dataset diario para el entrenamiento del modelo de ventas.
+
+    Coordina la integración de las distintas fuentes de información,
+    incorporando variables temporales y características derivadas del
+    histórico de ventas para generar un conjunto de datos preparado para el
+    entrenamiento de los modelos de predicción.
+    """
 
     def __init__(
         self,

@@ -1,7 +1,23 @@
+"""
+Módulo encargado de gestionar los horarios base de funcionamiento del
+establecimiento.
+
+Carga la configuración de apertura y cierre correspondiente a cada
+temporada, proporcionando una representación unificada de los horarios de
+funcionamiento utilizada por los procesos de planificación de calendarios.
+"""
+
 import pandas as pd
 
 
 class HorariosBaseLoader:
+    """
+    Gestiona la carga de los horarios base del establecimiento.
+
+    Obtiene la configuración de apertura y cierre asociada a cada temporada,
+    adaptando la información a un formato homogéneo que facilita su
+    utilización por los distintos módulos del planificador.
+    """
 
     def __init__(self):
 

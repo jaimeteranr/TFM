@@ -1,8 +1,25 @@
+"""
+Módulo encargado de generar la cobertura temporal asociada a los patrones de
+turno.
+
+Transforma la información de los patrones definidos en los intervalos
+horarios que cubre cada uno de ellos, generando un conjunto de datos que
+permite analizar y evaluar la cobertura prevista para cada patrón.
+"""
+
 import pandas as pd
 from datetime import datetime, timedelta
 
 
 class CoberturaPatronesGenerator:
+    """
+    Genera la cobertura horaria correspondiente a los patrones de turno.
+
+    Convierte cada patrón en la secuencia de intervalos temporales que
+    representa su cobertura, produciendo una estructura de datos preparada
+    para su utilización en los procesos de planificación y evaluación de
+    calendarios.
+    """
 
     def __init__(
         self,

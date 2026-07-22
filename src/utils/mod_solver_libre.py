@@ -1,10 +1,29 @@
+"""
+Módulo encargado de resolver el problema de planificación de calendarios de
+trabajo.
+
+Implementa el modelo de optimización utilizado para asignar turnos al
+personal, integrando la demanda prevista, las restricciones operativas y las
+reglas de planificación con el objetivo de generar un calendario de trabajo
+factible y optimizado.
+"""
+
 from ortools.sat.python import cp_model
 import pandas as pd
 
 from config import *
-
+from solution_printer import SolutionPrinter
 
 class SolverLibre:
+    """
+    Resuelve el problema de asignación de turnos mediante optimización (paquete ORTools).
+
+    Construye y ejecuta el modelo de planificación a partir de la información
+    disponible sobre trabajadores, demanda, patrones de turno y reglas del
+    sistema, obteniendo un calendario de trabajo que satisface las
+    restricciones definidas y optimiza los criterios establecidos para la
+    planificación.
+    """
 
     def resolver(
         self,
@@ -1464,6 +1483,8 @@ class SolverLibre:
 
         solver = cp_model.CpSolver()
 
+        solution_printer = SolutionPrinter()
+
         solver.parameters.max_time_in_seconds = 60
 
         print("\nHORAS SIN PATRONES POSIBLES")
@@ -1484,21 +1505,20 @@ class SolverLibre:
 
                 print(dia, hora)
 
-
         print("\nVARIABLES:", len(model.Proto().variables))
         print("RESTRICCIONES:", len(model.Proto().constraints))
 
         print("\nResolviendo...")
 
         status = solver.Solve(
-            model
+            model,
+            solution_printer
         )
 
         print(
             "Objetivo:",
             solver.ObjectiveValue()
         )
-
 
         print("\n===================")
         print("STATUS SOLVER")
@@ -1541,7 +1561,7 @@ class SolverLibre:
             )
 
             return None
-
+        
         # =====================================
         # RESULTADO
         # =====================================

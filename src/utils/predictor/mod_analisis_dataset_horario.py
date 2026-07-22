@@ -1,11 +1,10 @@
 """
-Módulo encargado del análisis exploratorio del conjunto de datos diario.
+Módulo encargado del análisis exploratorio del conjunto de datos.
 
-Proporciona herramientas para examinar las características del dataset,
-evaluar su calidad, identificar relaciones entre variables y obtener
-estadísticas descriptivas que facilitan la comprensión del comportamiento de
-las ventas y de los factores que influyen en los resultados diarios del
-establecimiento.
+Proporciona un conjunto de herramientas para examinar las características
+del dataset, evaluar su calidad, identificar relaciones entre variables y
+obtener estadísticas descriptivas que facilitan la comprensión del
+comportamiento de las ventas y de los factores que las condicionan.
 """
 
 import pandas as pd
@@ -14,13 +13,12 @@ import numpy as np
 
 class DatasetAnalyzer:
     """
-    Realiza el análisis exploratorio del conjunto de datos diario.
+    Realiza el análisis exploratorio del conjunto de datos.
 
     Genera información descriptiva, analiza la calidad de los datos y
     estudia la relación entre las variables del dataset mediante diferentes
     indicadores estadísticos, proporcionando una visión general del
-    comportamiento de las ventas y de los principales factores asociados a
-    los resultados diarios.
+    comportamiento de la información antes del entrenamiento de los modelos.
     """
 
     def __init__(
@@ -56,11 +54,11 @@ class DatasetAnalyzer:
 
         print(
 
-            dataset["Fecha"].min(),
+            dataset["datetime"].min(),
 
             "->",
 
-            dataset["Fecha"].max()
+            dataset["datetime"].max()
 
         )
 
@@ -105,19 +103,19 @@ class DatasetAnalyzer:
         print(correlaciones)
 
         # =====================================
-        # IMPORTANCIA BENEFICIO
+        # IMPORTANCIA VENTAS
         # =====================================
 
         print()
 
         print("========================")
-        print("IMPORTANCIA BENEFICIO")
+        print("IMPORTANCIA VENTAS")
         print("========================")
 
         corr = correlaciones[
-            "Beneficio"
+            "ventas"
         ].drop(
-            "Beneficio"
+            "ventas"
         )
 
         corr = corr.reindex(
@@ -133,41 +131,13 @@ class DatasetAnalyzer:
         print(corr)
 
         # =====================================
-        # IMPORTANCIA CANTIDAD
+        # PEOR HORA
         # =====================================
 
         print()
 
         print("========================")
-        print("IMPORTANCIA CANTIDAD")
-        print("========================")
-
-        corr = correlaciones[
-            "Cantidad"
-        ].drop(
-            "Cantidad"
-        )
-
-        corr = corr.reindex(
-
-            corr.abs().sort_values(
-                ascending=False
-            ).index
-
-        )
-
-        print()
-
-        print(corr)
-
-        # =====================================
-        # PEOR DÍA
-        # =====================================
-
-        print()
-
-        print("========================")
-        print("PEOR DÍA")
+        print("PEOR HORA")
         print("========================")
 
         print()
@@ -175,7 +145,7 @@ class DatasetAnalyzer:
         print(
 
             dataset.loc[
-                dataset["Beneficio"].idxmin()
+                dataset["ventas"].idxmin()
             ]
 
         )
@@ -187,18 +157,21 @@ class DatasetAnalyzer:
         print()
 
         print("========================")
-        print("VENTAS CON / SIN LLUVIA")
+        print("VENTAS SEGÚN LLUVIA")
         print("========================")
 
         print()
+
+        dataset["llovio"] = (
+            dataset["lluvia_mm"] > 0
+        ).astype(int)
 
         print(
 
             dataset.groupby(
                 "llovio"
             )[[
-                "Beneficio",
-                "Cantidad"
+                "ventas"
             ]].mean()
 
         )
@@ -220,8 +193,7 @@ class DatasetAnalyzer:
             dataset.groupby(
                 "weather_code"
             )[[
-                "Beneficio",
-                "Cantidad"
+                "ventas"
             ]].mean()
 
         )
@@ -229,10 +201,6 @@ class DatasetAnalyzer:
         # =====================================
         # DÍA DE LA SEMANA
         # =====================================
-
-        dataset["dia_semana"] = dataset[
-            "Fecha"
-        ].dt.day_name()
 
         print()
 
@@ -245,10 +213,31 @@ class DatasetAnalyzer:
         print(
 
             dataset.groupby(
-                "dia_semana"
+                "dia_semana_nombre"
             )[[
-                "Beneficio",
-                "Cantidad"
+                "ventas"
+            ]].mean()
+
+        )
+
+        # =====================================
+        # HORA DEL DÍA
+        # =====================================
+
+        print()
+
+        print("========================")
+        print("HORA DEL DÍA")
+        print("========================")
+
+        print()
+
+        print(
+
+            dataset.groupby(
+                "hora"
+            )[[
+                "ventas"
             ]].mean()
 
         )
@@ -268,9 +257,8 @@ class DatasetAnalyzer:
         print(
 
             dataset[[
-                "temp_media",
-                "temp_max",
-                "temp_min",
-                "Beneficio"
+                "temperatura_celsius",
+                "ventas"
             ]].corr()
+
         )

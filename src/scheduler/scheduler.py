@@ -140,9 +140,23 @@ print(
 
 extractor_demanda = DemandaExtractor()
 
-demanda = extractor_demanda.extraer(
-    temporada
-)
+if MODO_DEMANDA == "HISTORICA":
+
+    demanda = extractor_demanda.extraer_historica(
+        temporada
+    )
+
+elif MODO_DEMANDA == "PREDICCION":
+
+    demanda = extractor_demanda.extraer_prediccion(
+        FECHA_INICIO_SEMANA
+    )
+
+else:
+
+    raise ValueError(
+        f"MODO_DEMANDA desconocido: {MODO_DEMANDA}"
+    )
 
 print("\n========================")
 print("DEMANDA")

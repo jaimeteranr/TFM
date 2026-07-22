@@ -1,8 +1,32 @@
+"""
+Módulo encargado de obtener la demanda de personal utilizada por el
+planificador.
+
+Genera la demanda requerida para cada intervalo horario a partir de la
+cobertura histórica o de las predicciones de ventas y cobertura futura,
+proporcionando un formato unificado que sirve como entrada para los procesos
+de planificación de calendarios.
+"""
+
 import pandas as pd
 from datetime import timedelta
+from src.utils.predictor.coverage.mod_cobertura_historica import CoberturaHistorica
+
+from src.utils.predictor.mod_cargar_ventas_horario import VentasLoader
+from src.utils.predictor.mod_cargar_eventos import EventosLoader
+from src.utils.predictor.forecast.mod_calendar_predictor import CalendarPredictor
+from src.utils.predictor.coverage.mod_coverage_predictor import CoveragePredictor
 
 
 class DemandaExtractor:
+    """
+    Gestiona la obtención de la demanda de personal para el planificador.
+
+    Extrae la demanda tanto a partir del histórico de cobertura como de las
+    predicciones generadas por los modelos del sistema, transformando la
+    información obtenida en un conjunto de datos homogéneo preparado para su
+    utilización en la generación de calendarios de trabajo.
+    """
 
     def __init__(self):
 
@@ -67,7 +91,7 @@ class DemandaExtractor:
     # EXTRAER DEMANDA
     # =====================================
 
-    def extraer(
+    def extraer_historica(
         self,
         temporada
     ):
@@ -110,94 +134,104 @@ class DemandaExtractor:
 
         ].copy()
 
-        # =====================================
-        # NORMALIZAR TURNOS
-        # =====================================
+        # # =====================================
+        # # NORMALIZAR TURNOS
+        # # =====================================
 
-        self.horarios["entrada_norm"] = (
+        # self.horarios["entrada_norm"] = (
 
-            pd.to_datetime(
+        #     pd.to_datetime(
 
-                "1900-01-01 "
+        #         "1900-01-01 "
 
-                +
+        #         +
 
-                self.horarios["entrada"].astype(str)
+        #         self.horarios["entrada"].astype(str)
 
-            )
+        #     )
 
-            .dt.round("30min")
+        #     .dt.round("30min")
 
+        # )
+
+        # self.horarios["duracion_norm"] = (
+
+        #     (
+
+        #         self.horarios["duracion_turno"]
+
+        #         * 2
+
+        #     )
+
+        #     .round()
+
+        #     / 2
+
+        # )
+
+        # # =====================================
+        # # EXPANDIR TURNOS
+        # # =====================================
+
+        # registros = []
+
+        # for _, row in self.horarios.iterrows():
+
+        #     inicio = row["entrada_norm"]
+
+        #     fin = inicio + pd.Timedelta(
+
+        #         hours=row["duracion_norm"]
+
+        #     )
+
+        #     instante = inicio
+
+        #     while instante < fin:
+
+        #         registros.append({
+
+        #             "fecha":
+        #                 row["fecha"],
+
+        #             "temporada":
+        #                 row["temporada"],
+
+        #             "hora":
+        #                 instante.strftime("%H:%M")
+
+        #         })
+
+        #         instante += timedelta(
+        #             minutes=30
+        #         )
+
+        # cobertura = pd.DataFrame(
+        #     registros
+        # )
+
+        cobertura = CoberturaHistorica().construir(
+            temporada=temporada
         )
 
-        self.horarios["duracion_norm"] = (
+        cobertura["fecha"] = cobertura["datetime"].dt.normalize()
 
-            (
+        cobertura["hora"] = cobertura["datetime"].dt.strftime("%H:%M")
 
-                self.horarios["duracion_turno"]
+        cobertura["dia_semana"] = cobertura["datetime"].dt.day_name()
 
-                * 2
+        # # =====================================
+        # # DIA SEMANA
+        # # =====================================
 
-            )
+        # cobertura["dia_semana"] = (
 
-            .round()
+        #     cobertura["fecha"]
 
-            / 2
+        #     .dt.day_name()
 
-        )
-
-        # =====================================
-        # EXPANDIR TURNOS
-        # =====================================
-
-        registros = []
-
-        for _, row in self.horarios.iterrows():
-
-            inicio = row["entrada_norm"]
-
-            fin = inicio + pd.Timedelta(
-
-                hours=row["duracion_norm"]
-
-            )
-
-            instante = inicio
-
-            while instante < fin:
-
-                registros.append({
-
-                    "fecha":
-                        row["fecha"],
-
-                    "temporada":
-                        row["temporada"],
-
-                    "hora":
-                        instante.strftime("%H:%M")
-
-                })
-
-                instante += timedelta(
-                    minutes=30
-                )
-
-        cobertura = pd.DataFrame(
-            registros
-        )
-
-        # =====================================
-        # DIA SEMANA
-        # =====================================
-
-        cobertura["dia_semana"] = (
-
-            cobertura["fecha"]
-
-            .dt.day_name()
-
-        )
+        # )
 
         # =====================================
         # COBERTURA DIARIA
@@ -410,5 +444,138 @@ class DemandaExtractor:
             .isin(dias_abiertos)
 
         ].copy()
+
+        return demanda
+    
+    def extraer_prediccion(
+        self,
+        fecha_inicio
+    ):
+
+        # =====================================
+        # FECHAS
+        # =====================================
+
+        fecha_inicio = pd.to_datetime(fecha_inicio)
+
+        fecha_fin = fecha_inicio + timedelta(days=6)
+
+        # =====================================
+        # CARGAR DATOS
+        # =====================================
+
+        historico = VentasLoader().cargar()
+
+        eventos = EventosLoader().cargar()
+
+        # =====================================
+        # PREDECIR VENTAS
+        # =====================================
+
+        predictor = CalendarPredictor()
+
+        prediccion = predictor.predecir(
+
+            historico=historico,
+
+            fecha_inicio=fecha_inicio,
+
+            fecha_fin=fecha_fin,
+
+            eventos=eventos
+
+        )
+
+        print("\n========================")
+        print("VENTAS PREDICHAS")
+        print("========================\n")
+
+        print(
+            prediccion[
+                [
+                    "datetime",
+                    "ventas"
+                ]
+            ]
+        )
+
+        print("\nTotal registros:", len(prediccion))
+
+        # =====================================
+        # PREDECIR COBERTURA
+        # =====================================
+
+        prediccion = CoveragePredictor().predecir(
+            prediccion
+        )
+
+        print("\n========================")
+        print("VENTAS + DEMANDA")
+        print("========================\n")
+
+        print(
+            prediccion[
+                [
+                    "datetime",
+                    "ventas",
+                    "personas"
+                ]
+            ]
+        )
+
+        print("\nTotal registros:", len(prediccion))
+
+        # =====================================
+        # FORMATO DEMANDA
+        # =====================================
+
+        prediccion["dia_semana"] = (
+            prediccion["datetime"]
+            .dt.day_name()
+        )
+
+        demanda = prediccion[
+            [
+                "dia_semana",
+                "Hora",
+                "personas"
+            ]
+        ].copy()
+
+        demanda = demanda.rename(
+            columns={
+                "Hora": "hora",
+                "personas": "demanda"
+            }
+        )
+
+        # =====================================
+        # ORDENAR
+        # =====================================
+        orden = [
+
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday"
+
+        ]
+
+        demanda["dia_semana"] = pd.Categorical(
+            demanda["dia_semana"],
+            categories=orden,
+            ordered=True
+        )
+
+        demanda = demanda.sort_values(
+
+            [
+                "dia_semana",
+                "hora"
+            ]
+        ).reset_index(drop=True)
 
         return demanda

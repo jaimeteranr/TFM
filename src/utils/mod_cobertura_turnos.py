@@ -1,8 +1,25 @@
+"""
+Módulo encargado de generar la cobertura temporal asociada a los turnos de
+trabajo.
+
+Transforma la información de los turnos definidos en los intervalos horarios
+que cubre cada uno de ellos, generando un conjunto de datos que permite
+analizar y evaluar la cobertura de personal a lo largo de la planificación.
+"""
+
 import pandas as pd
 from datetime import datetime, timedelta
 
 
 class CoberturaTurnosGenerator:
+    """
+    Genera la cobertura horaria correspondiente a los turnos de trabajo.
+
+    Convierte cada turno en la secuencia de intervalos temporales que
+    representa su cobertura efectiva, produciendo una estructura de datos
+    preparada para su utilización en los procesos de análisis y evaluación
+    de calendarios.
+    """
 
     def __init__(
         self,
