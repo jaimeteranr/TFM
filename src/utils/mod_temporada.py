@@ -1,7 +1,20 @@
+"""
+Módulo encargado de determinar la temporada asociada a una fecha.
+
+Obtiene la temporada correspondiente a una fecha concreta a partir de la
+configuración definida por el sistema.
+"""
+
 import pandas as pd
 
 
 class Temporada:
+    """
+    Gestiona la identificación de temporadas del sistema.
+
+    Determina la temporada correspondiente a una fecha utilizando la
+    configuración establecida para los distintos periodos del año.
+    """
 
     def obtener_temporada(
         self,

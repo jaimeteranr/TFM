@@ -1,7 +1,24 @@
+"""
+Módulo encargado de cargar y preparar la información relacionada con los
+eventos y el calendario.
+
+Obtiene la información de festivos, eventos y partidos, genera las variables
+derivadas necesarias y normaliza el conjunto de datos para que pueda ser
+utilizado por los modelos de predicción de ventas y demanda de personal.
+"""
+
 import pandas as pd
 
 
 class EventosLoader:
+    """
+    Gestiona la carga y preparación de la información de eventos.
+
+    Procesa el calendario de eventos, incorporando variables asociadas a
+    festivos, prefestivos, partidos y otros acontecimientos relevantes,
+    generando un conjunto de datos listo para su integración con el resto de
+    las fuentes de información del sistema.
+    """
 
     def __init__(
         self,

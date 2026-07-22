@@ -2,13 +2,19 @@
 # SEMANA A PLANIFICAR
 # =====================================
 
-FECHA_INICIO_SEMANA = "2026-07-20" # Formato: "YYYY-MM-DD"
+FECHA_INICIO_SEMANA = "2025-07-14" # Formato: "YYYY-MM-DD"
 
 # =====================================
 # SOLVER
 # =====================================
 
 MODO_SOLVER = "LIBRE" # "LIBRE" o "PATRONES"
+
+# =====================================
+# DEMANDA
+# =====================================
+
+MODO_DEMANDA = "PREDICCION" # "HISTORICA" o "PREDICCION"
 
 # =====================================
 # DEBUG:

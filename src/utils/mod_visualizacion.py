@@ -1,3 +1,12 @@
+"""
+Módulo encargado de generar la representación visual de los calendarios de
+trabajo.
+
+Transforma el calendario generado por el planificador en formatos de
+visualización orientados a su consulta y distribución, proporcionando una
+presentación clara de las asignaciones semanales de cada trabajador.
+"""
+
 import pandas as pd
 
 from datetime import datetime
@@ -8,6 +17,13 @@ from config import FECHA_INICIO_SEMANA
 
 
 class Visualizacion:
+    """
+    Genera representaciones visuales del calendario de trabajo.
+
+    Convierte el calendario planificado en formatos tabulares y gráficos que
+    facilitan su interpretación y difusión, ofreciendo una vista organizada
+    de los turnos asignados a cada trabajador durante la semana.
+    """
 
     DIAS = [
         "Monday",

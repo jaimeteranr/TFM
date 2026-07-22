@@ -1,7 +1,24 @@
+"""
+Módulo encargado de la representación gráfica del conjunto de datos diario.
+
+Genera distintas visualizaciones que permiten analizar de forma intuitiva la
+relación entre los resultados diarios del establecimiento y las variables
+explicativas, facilitando el estudio de patrones y tendencias antes del
+entrenamiento de los modelos de predicción.
+"""
+
 import matplotlib.pyplot as plt
 
 
 class DatasetVisualizer:
+    """
+    Genera representaciones gráficas del conjunto de datos diario.
+
+    Proporciona un conjunto de visualizaciones orientadas al análisis
+    exploratorio de la información, facilitando la identificación de
+    patrones, tendencias y relaciones entre los resultados diarios y las
+    principales variables del sistema.
+    """
 
     def __init__(
         self,

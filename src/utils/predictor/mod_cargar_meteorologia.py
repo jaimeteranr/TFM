@@ -1,7 +1,23 @@
+"""
+Módulo encargado de cargar y procesar la información meteorológica.
+
+Obtiene los datos meteorológicos horarios y genera un conjunto de variables
+agregadas a nivel diario que describen las condiciones ambientales durante
+el horario de actividad del establecimiento. Los datos resultantes se
+utilizan como variables de entrada en los modelos de predicción.
+"""
+
 import pandas as pd
 
 
 class MeteorologiaLoader:
+    """
+    Gestiona la carga y transformación de la información meteorológica.
+
+    Procesa los registros meteorológicos horarios y genera tanto la
+    información original como un conjunto de indicadores diarios derivados,
+    preparados para su integración con el resto de los datos del sistema.
+    """
 
     def __init__(
         self,
@@ -27,6 +43,11 @@ class MeteorologiaLoader:
         df["hora"] = pd.to_datetime(
             df["fecha_hora"]
         ).dt.hour
+
+        df["Hora"] = (
+            df["fecha_hora"]
+            .dt.strftime("%H:%M")
+        )
 
         # =====================================
         # HORARIO NEGOCIO

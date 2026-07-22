@@ -1,3 +1,13 @@
+"""
+Script de evaluación de calendarios de trabajo.
+
+Compara la cobertura de personal generada por un calendario con la demanda
+prevista para cada intervalo horario, calculando diferentes indicadores de
+rendimiento relacionados con el déficit y el exceso de cobertura. Además,
+genera un resumen de resultados que facilita el análisis de la calidad de la
+planificación obtenida.
+"""
+
 import pandas as pd
 
 # =====================================

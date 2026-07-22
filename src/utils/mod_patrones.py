@@ -1,3 +1,13 @@
+"""
+Módulo encargado de gestionar los patrones de turno utilizados por el
+planificador.
+
+Obtiene los patrones de trabajo a partir del histórico de horarios,
+aplicando procesos de filtrado y generación de variantes para construir un
+conjunto de patrones representativos que sirve como base para la generación
+de calendarios.
+"""
+
 import pandas as pd
 
 from config import (
@@ -7,6 +17,15 @@ from config import (
 
 
 class PatronesManager:
+    """
+    Gestiona los patrones de turno empleados en la planificación.
+
+    Extrae los patrones históricos de trabajo, selecciona aquellos que
+    cumplen los criterios definidos por el sistema y genera variantes
+    adicionales cuando la configuración del planificador lo permite,
+    proporcionando un catálogo de patrones preparado para la generación de
+    calendarios.
+    """
 
     def __init__(self):
 
