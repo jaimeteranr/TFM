@@ -12,6 +12,7 @@ predicción de ventas y demanda de personal.
 import pandas as pd
 from .mod_openmeteo import OpenMeteoLoader
 from src.utils.mod_temporada import Temporada
+from variables_entrada import (MODO_DEBUG)
 
 
 class FutureDatasetBuilder:
@@ -229,15 +230,16 @@ class FutureDatasetBuilder:
 
             dataset[columna] = dataset[columna].fillna(0)
 
-        print()
-        print("========================")
-        print("FUTURE DATASET")
-        print("========================")
-        print()
+        if MODO_DEBUG:
+            print()
+            print("========================")
+            print("FUTURE DATASET")
+            print("========================")
+            print()
 
-        print(dataset.head())
-        print()
-        print(dataset.info())
+            print(dataset.head())
+            print()
+            print(dataset.info())
 
 
 

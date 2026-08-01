@@ -9,6 +9,7 @@ de esta clase e implementan únicamente el algoritmo de aprendizaje.
 """
 
 import pandas as pd
+import numpy as np
 
 from sklearn.metrics import (
     mean_absolute_error,
@@ -37,6 +38,14 @@ class ModelBase:
         self.dataset = dataset
 
         self.model = None
+
+        # =====================================
+        # PREPROCESADO
+        # =====================================
+
+        self.importancias = None
+        self.scaler_X = None
+        self.scaler_y = None
 
         self.X_train = None
         self.X_test = None
@@ -306,14 +315,61 @@ class ModelBase:
         )
     
     # =====================================
+    # GUARDAR MODELO
+    # =====================================
+
+    def guardar_modelo(self):
+
+        """
+        Cada modelo implementará su propio sistema
+        de almacenamiento.
+        """
+
+        pass
+
+    # =====================================
+    # CARGAR MODELO
+    # =====================================
+
+    def cargar_modelo(self):
+
+        """
+        Cada modelo implementará su propio sistema
+        de carga.
+        """
+
+        pass
+    
+    # =====================================
+    # PREDICCIÓN DEL MODELO
+    # =====================================
+
+    def predecir_modelo(self, X):
+
+        """
+        Método genérico de predicción.
+
+        Los modelos que necesiten un preprocesado adicional
+        (por ejemplo redes neuronales) pueden sobreescribir
+        este método.
+        """
+
+        return self.model.predict(X)
+    
+    # =====================================
     # PREDECIR
     # =====================================
 
     def predecir(self):
 
-        self.predicciones = self.model.predict(
+        self.predicciones = self.predecir_modelo(
             self.X_test
         )
+
+        # Algunos modelos (TensorFlow) devuelven un vector columna
+
+        import numpy as np
+        self.predicciones = np.asarray(self.predicciones).ravel()
 
 
     # =====================================
@@ -364,13 +420,21 @@ class ModelBase:
 
     def importancia_variables(self):
 
-        if not hasattr(
+        if hasattr(self.model, "feature_importances_"):
 
-            self.model,
+            importancia = pd.DataFrame({
 
-            "feature_importances_"
+                "Variable": self.FEATURES,
 
-        ):
+                "Importancia": self.model.feature_importances_
+
+            })
+
+        elif hasattr(self, "importancias"):
+
+            importancia = self.importancias.copy()
+
+        else:
 
             print(
                 "El modelo no dispone de importancia de variables."
@@ -416,7 +480,7 @@ class ModelBase:
 
             "Hora": self.test["Hora"].values,
 
-            "Venta real": self.y_test.values,
+            "Venta real": np.asarray(self.y_test).ravel(),
 
             "Predicción": self.predicciones
 

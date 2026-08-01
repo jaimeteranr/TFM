@@ -9,7 +9,7 @@ considere asignaciones ya establecidas durante la generación de calendarios.
 
 import pandas as pd
 
-from config import USAR_TURNOS_BLOQUEADOS
+from variables_entrada import USAR_TURNOS_BLOQUEADOS
 
 
 class TurnosBloqueados:

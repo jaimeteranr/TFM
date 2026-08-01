@@ -1,5 +1,5 @@
 import os
-from src.config import settings
+from config import settings
 from src.domain.repo_interfaces.vectordb_repository import IVectorDBRepository
 from haystack_integrations.document_stores.pgvector import PgvectorDocumentStore
 from haystack_integrations.components.retrievers.pgvector import PgvectorEmbeddingRetriever

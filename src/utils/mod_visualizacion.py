@@ -13,7 +13,7 @@ from datetime import datetime
 from datetime import timedelta
 import matplotlib.pyplot as plt
 
-from config import FECHA_INICIO_SEMANA
+from variables_entrada import FECHA_INICIO_SEMANA
 
 
 class Visualizacion:

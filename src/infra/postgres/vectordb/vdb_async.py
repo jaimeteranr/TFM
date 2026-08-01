@@ -2,7 +2,7 @@ import asyncio
 import numpy as np
 from sqlmodel import text
 from loguru import logger
-from src.config import settings
+from config import settings
 from src.application import utils
 from src.infra.postgres.database_async import get_db_async
 from sqlalchemy.ext.asyncio import AsyncSession

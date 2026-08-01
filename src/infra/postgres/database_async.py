@@ -6,8 +6,8 @@ from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from src.config import settings
-from src.config import settings
+from config import settings
+from config import settings
 from src.domain.models.sql_models import Data 
 
 # NOTE: Call all the tables (in domain.models) to register them

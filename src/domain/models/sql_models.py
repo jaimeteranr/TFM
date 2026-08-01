@@ -10,7 +10,7 @@ from sqlmodel import SQLModel, Field, Relationship
 from pydantic import BaseModel, RootModel, ConfigDict, ValidationError, field_validator, create_model, validator
 from sqlalchemy import ARRAY, Float, Column, Index
 from sqlalchemy.dialects.postgresql import JSONB
-from src.config import settings
+from config import settings
 
 # EVERY_SQL_MODEL_TO_CREATE_DECLARATIVELY
 

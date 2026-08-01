@@ -8,6 +8,7 @@ funcionamiento utilizada por los procesos de planificación de calendarios.
 """
 
 import pandas as pd
+from variables_entrada import (MODO_DEBUG)
 
 
 class HorariosBaseLoader:
@@ -41,31 +42,34 @@ class HorariosBaseLoader:
             "data/inputs/temporada.xlsx"
         )
 
-        print("\nDEBUG HORARIO_BASE\n")
+        if MODO_DEBUG: 
 
-        print(
+            print("\nDEBUG HORARIO_BASE\n")
 
-            self.horarios[
-                [
-                    "dia_semana",
-                    "apertura",
-                    "cierre"
-                ]
-            ].head(10)
+            print(
 
-        )
+                self.horarios[
+                    [
+                        "dia_semana",
+                        "apertura",
+                        "cierre"
+                    ]
+                ].head(10)
 
-        print(
-            type(
-                self.horarios.iloc[0]["apertura"]
             )
-        )
 
-        print(
-            type(
-                self.horarios.iloc[0]["cierre"]
+            print(
+                type(
+                    self.horarios.iloc[0]["apertura"]
+                )
             )
-        )
+
+            print(
+                type(
+                    self.horarios.iloc[0]["cierre"]
+                )
+            )
+        
 
         id_temporada = int(
 

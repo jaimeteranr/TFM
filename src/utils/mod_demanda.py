@@ -11,6 +11,7 @@ de planificación de calendarios.
 import pandas as pd
 from datetime import timedelta
 from src.utils.predictor.coverage.mod_cobertura_historica import CoberturaHistorica
+from variables_entrada import (MODO_DEBUG)
 
 from src.utils.predictor.mod_cargar_ventas_horario import VentasLoader
 from src.utils.predictor.mod_cargar_eventos import EventosLoader
@@ -486,20 +487,21 @@ class DemandaExtractor:
 
         )
 
-        print("\n========================")
-        print("VENTAS PREDICHAS")
-        print("========================\n")
+        if MODO_DEBUG:
+            print("\n========================")
+            print("VENTAS PREDICHAS")
+            print("========================\n")
 
-        print(
-            prediccion[
-                [
-                    "datetime",
-                    "ventas"
+            print(
+                prediccion[
+                    [
+                        "datetime",
+                        "ventas"
+                    ]
                 ]
-            ]
-        )
+            )
 
-        print("\nTotal registros:", len(prediccion))
+            print("\nTotal registros:", len(prediccion))
 
         # =====================================
         # PREDECIR COBERTURA
@@ -509,21 +511,22 @@ class DemandaExtractor:
             prediccion
         )
 
-        print("\n========================")
-        print("VENTAS + DEMANDA")
-        print("========================\n")
+        if MODO_DEBUG:
+            print("\n========================")
+            print("VENTAS + DEMANDA")
+            print("========================\n")
 
-        print(
-            prediccion[
-                [
-                    "datetime",
-                    "ventas",
-                    "personas"
+            print(
+                prediccion[
+                    [
+                        "datetime",
+                        "ventas",
+                        "personas"
+                    ]
                 ]
-            ]
-        )
+            )
 
-        print("\nTotal registros:", len(prediccion))
+            print("\nTotal registros:", len(prediccion))
 
         # =====================================
         # FORMATO DEMANDA
