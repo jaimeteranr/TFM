@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
-from src.config import settings
+from config import settings
 from src.domain.models.sql_models import Data
 
 # NOTE: Call all the tables (in domain.models) to register them

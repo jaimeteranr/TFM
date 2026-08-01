@@ -3,7 +3,7 @@ import psycopg2
 from psycopg2 import sql
 from loguru import logger
 from src.application import utils
-from src.config import settings
+from config import settings
 
 """ Run the code with:
 python -m src.infra.postgres.create_vdb

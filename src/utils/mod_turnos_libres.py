@@ -9,6 +9,7 @@ el proceso de optimización.
 """
 
 import pandas as pd
+from variables_entrada import (MODO_DEBUG)
 
 
 class TurnosLibres:
@@ -41,13 +42,15 @@ class TurnosLibres:
 
         for dia, info in horarios_base.items():
 
-            print("\nHORARIO LEIDO")
+            
+            if MODO_DEBUG:
+                print("\nHORARIO LEIDO")
 
-            print(
-                dia,
-                info["apertura"],
-                info["cierre"]
-            )
+                print(
+                    dia,
+                    info["apertura"],
+                    info["cierre"]
+                )
 
             if not info["abierto"]:
 
@@ -148,19 +151,21 @@ class TurnosLibres:
                     minutes=30
                 )
 
-            print(
-                "TURNOS GENERADOS:",
-                len(registros)
-            )
+            if MODO_DEBUG:
+                print(
+                    "TURNOS GENERADOS:",
+                    len(registros)
+                )
 
         df_debug = pd.DataFrame(
             registros
         )
 
-        print(
-            "SALIDA MAXIMA:",
-            df_debug["salida"].max()
-        )
+        if MODO_DEBUG:
+            print(
+                "SALIDA MAXIMA:",
+                df_debug["salida"].max()
+            )
 
         return pd.DataFrame(
 

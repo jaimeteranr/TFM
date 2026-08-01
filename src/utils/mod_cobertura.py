@@ -62,7 +62,7 @@ class CoberturaPatronesGenerator:
 
             actual = entrada
 
-            for _ in range(bloques):
+            for _ in range(bloques + 1):
 
                 registros.append({
 

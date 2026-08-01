@@ -10,7 +10,7 @@ de calendarios.
 
 import pandas as pd
 
-from config import (
+from variables_entrada import (
     PERMITIR_VARIANTES_ENTRADA,
     PERMITIR_VARIANTES_DURACION
 )

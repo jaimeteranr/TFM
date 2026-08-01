@@ -99,15 +99,12 @@ class XGBoostModel(ModelBase):
 
         print()
 
-        import joblib
-
         print(
             "XGBoost entrenado correctamente."
         )
 
-        joblib.dump(
-            self.model,
-            "modelo_xgboost.pkl"
+        self.model.save_model(
+            "modelo_xgboost.json"
         )
 
         print("Modelo guardado.")

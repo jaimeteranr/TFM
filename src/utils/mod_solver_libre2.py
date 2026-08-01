@@ -13,26 +13,52 @@ import pandas as pd
 
 from variables_entrada import *
 from solution_printer import SolutionPrinter
-from datetime import datetime, timedelta
-
 
 class SolverLibre:
     """
-    Resuelve el problema de asignación de turnos mediante optimización.
+    Resuelve el problema de asignación de turnos mediante optimización (paquete ORTools).
 
     Construye y ejecuta el modelo de planificación a partir de la información
-    disponible sobre trabajadores, patrones de turno, demanda y reglas del
+    disponible sobre trabajadores, demanda, patrones de turno y reglas del
     sistema, obteniendo un calendario de trabajo que satisface las
     restricciones definidas y optimiza los criterios establecidos para la
     planificación.
     """
-    def _preprocesar(self):
+
+    def resolver(
+        self,
+        activos,
+        demanda,
+        turnos_libres,
+        cobertura_turnos,
+        reglas,
+        modo_planificacion,
+        turnos_bloqueados,
+        horarios_base,
+        temporada
+    ):
+    
+        patrones = turnos_libres.copy()
+
+        patrones = patrones.rename(
+            columns={
+                "turno_id": "patron_id",
+                "entrada": "entrada_norm",
+                "duracion": "duracion_norm"
+            }
+        )
+
+        cobertura_patrones = cobertura_turnos.rename(
+            columns={
+                "turno_id": "patron_id"
+            }
+        ).copy()
 
         # =====================================
         # DIAS
         # =====================================
 
-        self.dias = [
+        dias = [
             "Monday",
             "Tuesday",
             "Wednesday",
@@ -42,268 +68,67 @@ class SolverLibre:
             "Sunday"
         ]
 
-        self.worker_ids = self.activos["id"].tolist()
-        self.patron_ids = self.patrones["patron_id"].tolist()
-
-        self.trabajadores_apertura = self.activos[
-            self.activos["apertura"] == 1
+        trabajadores_apertura = activos[
+            activos["apertura"] == 1
         ]["id"].tolist()
 
-        self.trabajadores_cierre = self.activos[
-            self.activos["cierre"] == 1
+        trabajadores_cierre = activos[
+            activos["cierre"] == 1
         ]["id"].tolist()
 
         # =====================================
         # REGLAS
         # =====================================
 
-        self.horas_semanales = int(
-            self.reglas["horas_semanales"]
+        horas_semanales = int(
+            reglas["horas_semanales"]
         )
 
-        self.max_dias_semana = int(
-            self.reglas["max_dias_semana"]
+        max_dias_semana = int(
+            reglas["max_dias_semana"]
         )
 
-        self.descanso_entre_turnos = int(
-            self.reglas["descanso_entre_turnos"]
+        descanso_entre_turnos = int(
+            reglas["descanso_entre_turnos"]
         )
 
-        self.min_personas_cierre = int(
-            self.reglas["min_personas_cierre"]
+        trabajadores_apertura = activos[
+            activos["apertura"] == 1
+        ]["id"].tolist()
+
+        trabajadores_cierre = activos[
+            activos["cierre"] == 1
+        ]["id"].tolist()
+
+        min_personas_cierre = int(
+            reglas["min_personas_cierre"]
         )
 
-        self.horas_objetivo = (
-            self.horas_semanales * 2
+
+
+
+        # OR-Tools trabaja en bloques de 30 min
+
+        horas_objetivo = (
+            horas_semanales * 2
         )
 
         # =====================================
         # PATRON -> HORAS
         # =====================================
 
-        self.patron_horas = {}
+        patron_horas = {}
 
-        for patron_id in self.patron_ids:
+        for patron_id in patrones["patron_id"]:
 
-            self.patron_horas[patron_id] = list(
+            patron_horas[patron_id] = list(
 
-                self.cobertura_patrones[
-                    self.cobertura_patrones["patron_id"]
+                cobertura_patrones[
+                    cobertura_patrones["patron_id"]
                     == patron_id
                 ]["hora"]
 
             )
-        
-        # =====================================
-        # PATRON -> HORA DESCANSO
-        # =====================================
-
-        self.patron_descanso = {}
-
-        for _, fila in self.patrones.iterrows():
-
-            patron_id = fila["patron_id"]
-
-            duracion = float(
-                fila["duracion_norm"]
-            )
-
-            if duracion <= 6:
-
-                self.patron_descanso[
-                    patron_id
-                ] = None
-
-                continue
-
-            entrada = pd.to_datetime(
-                fila["entrada_norm"],
-                format="%H:%M"
-            )
-
-            # mitad redondeada hacia arriba
-
-            horas_descanso = int(
-                (duracion / 2)
-                + 0.999
-            )
-
-            instante_descanso = (
-
-                entrada
-
-                + pd.Timedelta(
-                    hours=horas_descanso
-                )
-
-            )
-
-            self.patron_descanso[
-                patron_id
-            ] = instante_descanso.strftime(
-                "%H:%M"
-            )
-
-        # =====================================
-        # INFORMACION DE PATRONES
-        # =====================================
-
-        self.entrada_patron = (
-            self.patrones
-            .set_index("patron_id")["entrada_norm"]
-            .to_dict()
-        )
-
-        self.duracion_patron = (
-            self.patrones
-            .set_index("patron_id")["duracion_norm"]
-            .to_dict()
-        )
-
-        self.nombre_trabajador = (
-            self.activos
-            .set_index("id")["nombre"]
-            .to_dict()
-        )
-
-        # =====================================
-        # INICIO Y FIN DE PATRONES
-        # =====================================
-
-        self.inicio_patron = {}
-        self.fin_patron = {}
-
-        for p in self.patron_ids:
-
-            inicio = pd.to_datetime(
-                self.entrada_patron[p],
-                format="%H:%M"
-            )
-
-            fin = inicio + pd.Timedelta(
-                hours=float(self.duracion_patron[p])
-            )
-
-            self.inicio_patron[p] = inicio
-            self.fin_patron[p] = fin
-
-        self.duracion_bloques = {
-            p: int(self.duracion_patron[p] * 2)
-            for p in self.patron_ids
-        }
-
-        self.cubre_21 = {}
-
-        limite = pd.to_datetime("21:00", format="%H:%M")
-
-        for p in self.patron_ids:
-            self.cubre_21[p] = (
-                self.fin_patron[p] >= limite
-            )
-
-        # =====================================
-        # HORA -> PATRONES
-        # =====================================
-
-        self.patrones_por_hora = {}
-
-        for dia in self.dias:
-
-            self.patrones_por_hora[dia] = {}
-
-            cobertura_dia = self.cobertura_patrones[
-                self.cobertura_patrones["dia"] == dia
-            ]
-
-            for hora in cobertura_dia["hora"].unique():
-
-                self.patrones_por_hora[dia][hora] = (
-                    cobertura_dia[
-                        cobertura_dia["hora"] == hora
-                    ]["patron_id"].tolist()
-                )
-
-        self.horarios_dia = {}
-        self.dias_abiertos = []
-
-        for dia, info in self.horarios_base.items():
-
-            # Tienda cerrada ese día
-            if not info["apertura"] or not info["cierre"]:
-                continue
-
-            self.dias_abiertos.append(dia)
-
-            apertura = datetime.strptime(
-                info["apertura"],
-                "%H:%M"
-            )
-
-            cierre = datetime.strptime(
-                info["cierre"],
-                "%H:%M"
-            )
-
-            if cierre <= apertura:
-                cierre += timedelta(days=1)
-
-            self.horarios_dia[dia] = (apertura, cierre)
-
-        self.patrones_por_dia = {}
-
-        for dia in self.dias:
-
-            self.patrones_por_dia[dia] = (
-                self.patrones[
-                    self.patrones["dia"] == dia
-                ]["patron_id"].tolist()
-            )
-
-        print(
-            self.patrones[
-                (self.patrones["dia"] == "Friday") &
-                (self.patrones["entrada_norm"] == "17:00")
-            ][["entrada_norm", "duracion_norm"]]
-        )
-
-    
-
-
-    def resolver(
-        self,
-        activos,
-        demanda,
-        patrones,
-        cobertura_patrones,
-        reglas,
-        modo_planificacion,
-        turnos_bloqueados,
-        horarios_base,
-        temporada
-    ):
-
-        # =====================================
-        # PARAMETROS
-        # =====================================
-
-        self.activos = activos
-        self.demanda = demanda
-        self.patrones = patrones
-        self.cobertura_patrones = cobertura_patrones
-        self.reglas = reglas
-        self.modo_planificacion = modo_planificacion
-        self.turnos_bloqueados = turnos_bloqueados
-        self.horarios_base = horarios_base
-        self.temporada = temporada
-
-        self._preprocesar()
-
-        print(self.patrones.head())
-        print(self.patrones.columns)
-        print(len(self.patrones))
-
-        # OR-Tools trabaja en bloques de 30 min
-
 
         # =====================================
         # COBERTURA BLOQUEADA
@@ -358,6 +183,55 @@ class SolverLibre:
                         minutes=30
                     )
 
+        # =====================================
+        # PATRON -> HORA DESCANSO
+        # =====================================
+
+        patron_descanso = {}
+
+        for _, fila in patrones.iterrows():
+
+            patron_id = fila["patron_id"]
+
+            duracion = float(
+                fila["duracion_norm"]
+            )
+
+            if duracion <= 6:
+
+                patron_descanso[
+                    patron_id
+                ] = None
+
+                continue
+
+            entrada = pd.to_datetime(
+                fila["entrada_norm"],
+                format="%H:%M"
+            )
+
+            # mitad redondeada hacia arriba
+
+            horas_descanso = int(
+                (duracion / 2)
+                + 0.999
+            )
+
+            instante_descanso = (
+
+                entrada
+
+                + pd.Timedelta(
+                    hours=horas_descanso
+                )
+
+            )
+
+            patron_descanso[
+                patron_id
+            ] = instante_descanso.strftime(
+                "%H:%M"
+            )
 
         # =====================================
         # INICIO Y FIN DE PATRON
@@ -383,26 +257,27 @@ class SolverLibre:
         if MODO_DEBUG:
             print("\nDEMANDA POR DIA")
             print(
-                self.demanda.groupby("dia_semana")["demanda"].sum()
+                demanda.groupby("dia_semana")["demanda"].sum()
             )
 
             print("\nDEMANDA VIERNES TARDE")
             print(
-                self.demanda[
-                    (self.demanda["dia_semana"] == "Friday")
+                demanda[
+                    (demanda["dia_semana"] == "Friday")
                     &
-                    (self.demanda["hora"] >= "00:00")
+                    (demanda["hora"] >= "00:00")
                 ]
             )
 
+        if MODO_DEBUG:
             print("\nDEMANDA SABADO TARDE")
             print(
-                self.demanda[
-                    (self.demanda["dia_semana"] == "Saturday")
+                demanda[
+                    (demanda["dia_semana"] == "Saturday")
                     &
-                    (self.demanda["hora"] >= "00:00")
-                ]
-            )
+                    (demanda["hora"] >= "00:00")
+            ]
+        )
 
         # =====================================
         # MODELO
@@ -410,73 +285,172 @@ class SolverLibre:
 
         model = cp_model.CpModel()
 
+        if MODO_DEBUG:
+            print("PASO 1")
+
         # =====================================
         # VARIABLES
         # =====================================
 
         x = {}
 
-        for w in self.worker_ids:
+        for w in activos["id"]:
 
-            for d in self.dias:
+            for d in dias:
 
-                for p in self.patrones_por_dia[d]:
+                for p in patrones["patron_id"]:
 
                     x[w, d, p] = model.NewBoolVar(
                         f"x_{w}_{d}_{p}"
                     )
 
+        if MODO_DEBUG:
+            print("PASO 2")
+
+        
         # =====================================
-        # PATRONES FUERA DE HORARIO
+        # DIAS CERRADOS
         # =====================================
 
-        for dia in self.dias_abiertos:
+        for dia in dias:
 
-            apertura, cierre = self.horarios_dia[dia]
+            if not horarios_base[dia]["abierto"]:
 
-            apertura -= timedelta(
-                minutes=self.reglas["minutos_montaje"]
-            )
+                for w in activos["id"]:
 
-            cierre += timedelta(
-                minutes=self.reglas["minutos_recogida"]
-            )
-
-            for p in self.patrones_por_dia[dia]:
-
-                inicio = self.inicio_patron[p]
-                fin = self.fin_patron[p]
-
-                # Si el patrón cruza medianoche
-                if fin <= inicio:
-                    fin += timedelta(days=1)
-
-                if inicio < apertura or fin > cierre:
-
-                    for w in self.worker_ids:
+                    for p in patrones["patron_id"]:
 
                         model.Add(
                             x[w, dia, p] == 0
                         )
 
+        # # =====================================
+        # # PATRONES FUERA DE HORARIO
+        # # =====================================
+
+        # for dia in dias:
+
+        #     if not horarios_base[dia]["abierto"]:
+        #         continue
+
+        #     cierre_txt = horarios_base[dia]["cierre"]
+
+        #     if cierre_txt is None:
+        #         continue
+
+        #     cierre = pd.to_datetime(
+        #         cierre_txt,
+        #         format="%H:%M"
+        #     )
+
+        #     if cierre <= pd.to_datetime(
+        #         horarios_base[dia]["apertura"],
+        #         format="%H:%M"
+        #     ):
+        #         cierre += pd.Timedelta(days=1)
+
+        #     cierre += pd.Timedelta(
+        #         minutes=reglas["minutos_recogida"]
+        #     )
+
+        #     for _, patron in patrones.iterrows():
+
+        #         entrada = pd.to_datetime(
+        #             patron["entrada_norm"],
+        #             format="%H:%M"
+        #         )
+
+        #         salida = (
+        #             entrada
+        #             +
+        #             pd.Timedelta(
+        #                 hours=float(
+        #                     patron["duracion_norm"]
+        #                 )
+        #             )
+        #         )
+
+        #         if salida > cierre:
+
+        #             for w in activos["id"]:
+
+        #                 model.Add(
+        #                     x[
+        #                         w,
+        #                         dia,
+        #                         patron["patron_id"]
+        #                     ] == 0
+        #                 )
+
+        # # =====================================
+        # # DEBUG PATRONES FUERA DE HORARIO
+        # # =====================================
+
+        # print("\nPATRONES QUE TERMINAN DESPUES DEL CIERRE")
+
+        # for dia in dias:
+
+        #     if not horarios_base[dia]["abierto"]:
+        #         continue
+
+        #     cierre = horarios_base[dia]["cierre"]
+
+        #     contador = 0
+
+        #     for _, p in patrones.iterrows():
+
+        #         entrada = pd.to_datetime(
+        #             p["entrada_norm"],
+        #             format="%H:%M"
+        #         )
+
+        #         salida = (
+        #             entrada
+        #             + pd.Timedelta(
+        #                 hours=float(
+        #                     p["duracion_norm"]
+        #                 )
+        #             )
+        #         )
+
+        #         salida_txt = salida.strftime("%H:%M")
+
+        #         if cierre < "06:00":
+
+        #             if salida_txt > cierre and salida_txt < "06:00":
+        #                 contador += 1
+
+        #         else:
+
+        #             if salida_txt > cierre:
+        #                 contador += 1
+
+        #     print(
+        #         f"{dia}: {contador}"
+        #     )
+
+
         # =====================================
         # MAX 1 TURNO POR DIA
         # =====================================
 
-        for w in self.worker_ids:
+        for w in activos["id"]:
 
-            for d in self.dias:
+            for d in dias:
 
                 model.Add(
 
                     sum(
                         x[w, d, p]
-                        for p in self.patrones_por_dia[d]
+                        for p in patrones["patron_id"]
                     )
 
                     <= 1
 
                 )
+
+        if MODO_DEBUG:
+            print("PASO 3")
 
         # =====================================
         # LIBRANZAS FIN DE SEMANA
@@ -485,7 +459,7 @@ class SolverLibre:
         trabajan_sabado = []
         trabajan_domingo = []
 
-        for w in self.worker_ids:
+        for w in activos["id"]:
 
             trabaja_sabado = model.NewBoolVar(
                 f"sabado_{w}"
@@ -499,7 +473,7 @@ class SolverLibre:
 
                 sum(
                     x[w, "Saturday", p]
-                    for p in self.patrones_por_dia["Saturday"]
+                    for p in patrones["patron_id"]
                 )
 
                 >= 1
@@ -512,7 +486,7 @@ class SolverLibre:
 
                 sum(
                     x[w, "Saturday", p]
-                    for p in self.patrones_por_dia["Saturday"]
+                    for p in patrones["patron_id"]
                 )
 
                 == 0
@@ -525,7 +499,7 @@ class SolverLibre:
 
                 sum(
                     x[w, "Sunday", p]
-                    for p in self.patrones_por_dia["Sunday"]
+                    for p in patrones["patron_id"]
                 )
 
                 >= 1
@@ -538,7 +512,7 @@ class SolverLibre:
 
                 sum(
                     x[w, "Sunday", p]
-                    for p in self.patrones_por_dia["Sunday"]
+                    for p in patrones["patron_id"]
                 )
 
                 == 0
@@ -559,102 +533,149 @@ class SolverLibre:
 
             model.Add(
                 sum(trabajan_sabado)
-                == len(self.activos) - 1
+                == len(activos) - 1
             )
 
             model.Add(
                 sum(trabajan_domingo)
-                == len(self.activos) - 1
+                == len(activos) - 1
             )
 
         else:
 
             model.Add(
                 sum(trabajan_sabado)
-                == len(self.activos)
+                == len(activos)
             )
 
             model.Add(
                 sum(trabajan_domingo)
-                == len(self.activos)
+                == len(activos)
             )
+        # # =====================================
+        # # DESCANSO ENTRE TURNOS
+        # # =====================================
 
-        # =====================================
-        # DESCANSO ENTRE TURNOS
-        # =====================================
+        # for w in activos["id"]:
 
-        for w in self.worker_ids:
+        #     for i in range(
+        #         len(dias) - 1
+        #     ):
 
-            for i in range(
-                len(self.dias) - 1
-            ):
+        #         dia_actual = dias[i]
 
-                dia_actual = self.dias[i]
+        #         dia_siguiente = dias[i + 1]
 
-                dia_siguiente = self.dias[i + 1]
+        #         for _, p1 in patrones.iterrows():
 
-                for p1 in self.patrones_por_dia[dia_actual]:
+        #             inicio1, fin1 = (
+        #                 obtener_inicio_fin_patron(
+        #                     p1["entrada_norm"],
+        #                     p1["duracion_norm"]
+        #                 )
+        #             )
 
-                    fin1 = self.fin_patron[p1]
+        #             for _, p2 in patrones.iterrows():
 
-                    for p2 in self.patrones_por_dia[dia_siguiente]:
+        #                 inicio2, _ = (
+        #                     obtener_inicio_fin_patron(
+        #                         p2["entrada_norm"],
+        #                         p2["duracion_norm"]
+        #                     )
+        #                 )
 
-                        inicio2 = (
-                            self.inicio_patron[p2]
-                            +
-                            pd.Timedelta(days=1)
-                        )
+        #                 inicio2 = (
+        #                     inicio2
+        #                     +
+        #                     pd.Timedelta(days=1)
+        #                 )
 
-                        horas_descanso = (
-                            inicio2
-                            -
-                            fin1
-                        ).total_seconds() / 3600
+        #                 horas_descanso = (
 
-                        if horas_descanso < self.descanso_entre_turnos:
+        #                     inicio2
+        #                     -
+        #                     fin1
 
-                            model.Add(
-                                x[w, dia_actual, p1]
-                                +
-                                x[w, dia_siguiente, p2]
-                                <= 1
-                            )
+        #                 ).total_seconds() / 3600
 
+        #                 if (
 
+        #                     horas_descanso
+        #                     <
+        #                     descanso_entre_turnos
+
+        #                 ):
+
+        #                     model.Add(
+
+        #                         x[
+        #                             w,
+        #                             dia_actual,
+        #                             p1["patron_id"]
+        #                         ]
+
+        #                         +
+
+        #                         x[
+        #                             w,
+        #                             dia_siguiente,
+        #                             p2["patron_id"]
+        #                         ]
+
+        #                         <= 1
+
+        #                     )
+
+        if MODO_DEBUG:
+            print("PASO 3.B")
         # =====================================
         # HORAS SEMANALES
         # =====================================
 
-        for w in self.worker_ids:
+        for w in activos["id"]:
 
             horas = []
 
-            for d in self.dias:
-                for p in self.patrones_por_dia[d]:
+            for d in dias:
+
+                for _, p in patrones.iterrows():
+
                     horas.append(
-                        self.duracion_bloques[p]
+
+                        int(
+                            p["duracion_norm"] * 2
+                        )
+
                         *
-                        x[w,d,p]
+
+                        x[
+                            w,
+                            d,
+                            p["patron_id"]
+                        ]
+
                     )
 
             total = sum(horas)
 
             model.Add(
-                total == self.horas_objetivo
-                #total <= self.horas_objetivo
+                total == horas_objetivo
+                #total <= horas_objetivo
             )
 
         trabaja_dia_var = {}
 
+        if MODO_DEBUG:
+            print("PASO 3.C")
         # =====================================
         # DIAS TRABAJADOS
         # =====================================
 
-        for w in self.worker_ids:
+        for w in activos["id"]:
 
             trabaja_dia = []
 
-            for d in self.dias:
+            for d in dias:
 
                 trabaja_dia_var[w, d] = model.NewBoolVar(
                     f"trabaja_{w}_{d}"
@@ -666,7 +687,9 @@ class SolverLibre:
 
                     x[w, d, p]
 
-                    for p in self.patrones_por_dia[d]
+                    for p in patrones[
+                        "patron_id"
+                    ]
 
                 )
 
@@ -680,20 +703,22 @@ class SolverLibre:
 
             model.Add(
                 sum(trabaja_dia)
-                <= self.max_dias_semana
+                <= max_dias_semana
             )
 
+        if MODO_DEBUG:
+            print("PASO 3.D")
         # =====================================
         # LIBRES CONSECUTIVOS
         # =====================================
 
         penalizacion_libres = []
 
-        for w in self.worker_ids:
+        for w in activos["id"]:
 
             libre = {}
 
-            for d in self.dias:
+            for d in dias:
 
                 libre[d] = model.NewBoolVar(
                     f"libre_{w}_{d}"
@@ -716,15 +741,15 @@ class SolverLibre:
             pares_consecutivos = []
 
             for i in range(
-                len(self.dias) - 1
+                len(dias) - 1
             ):
 
                 par = model.NewBoolVar(
                     f"libres_seguidos_{w}_{i}"
                 )
 
-                d1 = self.dias[i]
-                d2 = self.dias[i + 1]
+                d1 = dias[i]
+                d2 = dias[i + 1]
 
                 model.Add(
                     libre[d1]
@@ -786,105 +811,228 @@ class SolverLibre:
 
             )
 
+        if MODO_DEBUG:
+            print("PASO 3.E")
+            print("PASO 3.F")
+            
         # =====================================
         # ABRIDOR HASTA LAS 21:00
         # =====================================
 
         if OBLIGAR_APERTURA_HASTA_21:
 
-            limite_21 = pd.to_datetime(
-                "21:00",
-                format="%H:%M"
-            )
+            for dia in dias:
 
-            for dia in self.dias_abiertos:
+                hora_apertura = horarios_base[
+                    dia
+                ]["apertura"]
 
-                if not self.horarios_base[dia]["abierto"]:
+                if hora_apertura is None:
                     continue
 
-                apertura, _ = self.horarios_dia[dia]
+                for _, p in patrones.iterrows():
 
-                apertura -= timedelta(
-                    minutes=self.reglas["minutos_montaje"]
-                )
+                    patron_id = p["patron_id"]
 
-                candidatos = []
+                    entrada = p["entrada_norm"]
 
-                for p in self.patrones_por_dia[dia]:
+                    duracion = float(
+                        p["duracion_norm"]
+                    )
 
-                    if (
-                        self.inicio_patron[p] <= apertura
-                        and
-                        self.fin_patron[p] >= limite_21
-                    ):
+                    entrada_dt = pd.to_datetime(
+                        entrada,
+                        format="%H:%M"
+                    )
 
-                        for w in self.trabajadores_apertura:
+                    apertura_dt = pd.to_datetime(
+                        hora_apertura,
+                        format="%H:%M"
+                    )
 
-                            candidatos.append(
-                                x[w, dia, p]
+                    inicio_apertura = (
+
+                        apertura_dt
+
+                        -
+
+                        pd.Timedelta(
+                            minutes=
+                            reglas["minutos_montaje"]
+                        )
+
+                    )
+
+                    es_abridor = (
+                        entrada_dt
+                        <= inicio_apertura
+                    )
+
+                    if not es_abridor:
+                        continue
+
+                    fin_dt = (
+
+                        entrada_dt
+
+                        +
+
+                        pd.Timedelta(
+                            hours=duracion
+                        )
+
+                    )
+
+                    limite = pd.to_datetime(
+                        "21:00",
+                        format="%H:%M"
+                    )
+
+                    if fin_dt < limite:
+
+                        for w in activos["id"]:
+
+                            model.Add(
+                                x[
+                                    w,
+                                    dia,
+                                    patron_id
+                                ]
+                                == 0
                             )
 
-                if candidatos:
 
-                    model.Add(
-                        sum(candidatos) >= 1
-                    )
+        if MODO_DEBUG:
+            print("PASO 3.G")
+        # =====================================
+        # CIERRE CAPACITADO
+        # =====================================
+
+        for _, fila in demanda.iterrows():
+
+            dia = fila["dia_semana"]
+
+            hora = fila["hora"]
+
+            if hora != "23:30":
+                continue
+
+            cobertura_cierre = []
+
+            for w in trabajadores_cierre:
+
+                for p in patrones["patron_id"]:
+
+                    if hora in patron_horas[p]:
+
+                        cobertura_cierre.append(
+                            x[w, dia, p]
+                        )
+
+            if cobertura_cierre:
+
+                model.Add(
+                    sum(cobertura_cierre)
+                    >= 1
+                )
 
         # =====================================
         # MINIMO PERSONAS EN CIERRE
         # =====================================
 
-        for dia in self.dias_abiertos:
+        from datetime import datetime, timedelta
 
-            _, cierre = self.horarios_dia[dia]
+        for dia in dias:
 
-            hora_cierre = (cierre+timedelta(minutes=self.reglas["minutos_recogida"])
+            hora_cierre = horarios_base[dia]["cierre"]
+
+            if hora_cierre is None:
+                continue
+
+            hora_cierre_real = (
+
+                datetime.strptime(
+                    hora_cierre,
+                    "%H:%M"
+                )
+
+                +
+
+                timedelta(
+                    minutes=reglas[
+                        "minutos_recogida"
+                    ]
+                )
+
             ).strftime("%H:%M")
+
+            if MODO_DEBUG:
+                print(
+                    dia,
+                    "cierre:",
+                    hora_cierre,
+                    "cierre_real:",
+                    hora_cierre_real
+                )
 
             cobertura = []
 
-            for w in self.worker_ids:
+            for w in activos["id"]:
 
-                for p in self.patrones_por_dia[dia]:
+                for p in patrones["patron_id"]:
 
-                    if hora_cierre in self.patron_horas[p]:
+                    if hora_cierre_real in patron_horas[p]:
 
                         cobertura.append(
                             x[w, dia, p]
                         )
 
             cobertura_fija = cobertura_bloqueada.get(
-                (dia, hora_cierre),
+                (dia, hora_cierre_real),
                 0
             )
+
+            if MODO_DEBUG:
+                print(
+                    dia,
+                    "patrones cierre:",
+                    len(cobertura)
+                )
 
             if cobertura:
 
                 model.Add(
+
                     sum(cobertura)
+
                     +
+
                     cobertura_fija
+
                     >=
-                    self.min_personas_cierre
+
+                    min_personas_cierre
+
                 )
+
 
         # =====================================
         # APERTURA CAPACITADA
         # =====================================
 
-        for dia in self.dias_abiertos:
+        for dia in dias:
 
-            hora_apertura = self.horarios_base[
+            hora_apertura = horarios_base[
                 dia
             ]["apertura"]
 
             cobertura = []
 
-            for w in self.trabajadores_apertura:
+            for w in trabajadores_apertura:
 
-                for p in self.patrones_por_dia[dia]:
+                for p in patrones["patron_id"]:
 
-                    if hora_apertura in self.patron_horas[p]:
+                    if hora_apertura in patron_horas[p]:
 
                         cobertura.append(
                             x[w, dia, p]
@@ -901,20 +1049,19 @@ class SolverLibre:
         # CIERRE CAPACITADO
         # =====================================
 
-        for dia in self.dias_abiertos:
+        for dia in dias:
 
-            _, cierre = self.horarios_dia[dia]
-
-            hora_cierre = (cierre + timedelta(minutes=self.reglas["minutos_recogida"])
-            ).strftime("%H:%M")
+            hora_cierre = horarios_base[
+                dia
+            ]["cierre"]
 
             cobertura = []
 
-            for w in self.trabajadores_cierre:
+            for w in trabajadores_cierre:
 
-                for p in self.patrones_por_dia[dia]:
+                for p in patrones["patron_id"]:
 
-                    if hora_cierre in self.patron_horas[p]:
+                    if hora_cierre in patron_horas[p]:
 
                         cobertura.append(
                             x[w, dia, p]
@@ -927,28 +1074,39 @@ class SolverLibre:
                     >= 1
                 )
 
+        if MODO_DEBUG:
+            print(
+                "Patrones:",
+                len(patrones)
+            )
+
+        if MODO_DEBUG:
+            print("PASO 4")
+
         # =====================================
         # COBERTURA MINIMA
         # =====================================
 
-        for _, fila in self.demanda.iterrows():
+        for i, (_, fila) in enumerate(demanda.iterrows()):
+
+            if MODO_DEBUG:
+                if i % 20 == 0:
+                    print("DEMANDA", i)
 
             dia = fila["dia_semana"]
-
-            if dia not in self.dias_abiertos:
-                continue
-
             hora = fila["hora"]
 
             cobertura = []
 
-            for w in self.worker_ids:
+            for w in activos["id"]:
 
-                for p in self.patrones_por_hora[dia].get(hora, []):
+                for p in patrones["patron_id"]:
 
-                    cobertura.append(
-                        x[w, dia, p]
-                    )
+                    if hora in patron_horas[p]:
+
+                        cobertura.append(
+                            x[w, dia, p]
+                        )
 
             cobertura_fija = cobertura_bloqueada.get(
                 (dia, hora),
@@ -971,19 +1129,17 @@ class SolverLibre:
 
                 )
 
+        if MODO_DEBUG:
+            print("PASO 5")
         # =====================================
         # MINIMO PERSONAL TARDE
         # =====================================
 
         if ACTIVAR_MIN_PERSONAS_TARDE:
 
-            for _, fila in self.demanda.iterrows():
+            for _, fila in demanda.iterrows():
 
                 dia = fila["dia_semana"]
-
-                if dia not in self.dias_abiertos:
-                    continue
-
                 hora = fila["hora"]
 
                 if (
@@ -994,12 +1150,15 @@ class SolverLibre:
 
                     cobertura = []
 
-                    for w in self.worker_ids:
-                        for p in self.patrones_por_hora[dia].get(hora, []):
+                    for w in activos["id"]:
 
-                            cobertura.append(
-                                x[w, dia, p]
-                            )
+                        for p in patrones["patron_id"]:
+
+                            if hora in patron_horas[p]:
+
+                                cobertura.append(
+                                    x[w, dia, p]
+                                )
 
                     cobertura_fija = cobertura_bloqueada.get(
                         (dia, hora),
@@ -1020,14 +1179,14 @@ class SolverLibre:
 
         if ACTIVAR_DESCANSOS:
 
-            for dia in self.dias_abiertos:
+            for dia in dias:
 
-                for w in self.worker_ids:
+                for w in activos["id"]:
 
-                    for p in self.patrones_por_dia[dia]:
+                    for p in patrones["patron_id"]:
 
                         hora_descanso = (
-                            self.patron_descanso[p]
+                            patron_descanso[p]
                         )
 
                         if hora_descanso is None:
@@ -1036,15 +1195,15 @@ class SolverLibre:
 
                         cobertura = []
 
-                        for w2 in self.worker_ids:
+                        for w2 in activos["id"]:
 
-                            for p2 in self.patrones_por_dia[dia]:
+                            for p2 in patrones["patron_id"]:
 
                                 if (
 
                                     hora_descanso
                                     in
-                                    self.patron_horas[p2]
+                                    patron_horas[p2]
 
                                 ):
 
@@ -1098,33 +1257,24 @@ class SolverLibre:
 
         if modo_planificacion == "DEFICIT":
 
-            if MODO_DEBUG:
-                print(
-                    "Optimizando deficit..."
-                )
+            print(
+                "Optimizando deficit..."
+            )
 
         else:
 
-            if MODO_DEBUG:
-                print(
-                    "Optimizando exceso..."
-                )
-            
+            print(
+                "Optimizando exceso..."
+            )
 
 
         # =====================================
         # DEFICITS
         # =====================================
 
-        auditoria = []
-
-        for _, fila in self.demanda.iterrows():
+        for _, fila in demanda.iterrows():
 
             dia = fila["dia_semana"]
-
-            if dia not in self.dias_abiertos:
-                continue
-
             hora = fila["hora"]
 
             demanda_slot = int(
@@ -1133,12 +1283,15 @@ class SolverLibre:
 
             cobertura = []
 
-            for w in self.worker_ids:
-                
-                for p in self.patrones_por_hora[dia].get(hora, []):
-                    cobertura.append(
-                        x[w, dia, p]
-                    )
+            for w in activos["id"]:
+
+                for p in patrones["patron_id"]:
+
+                    if hora in patron_horas[p]:
+
+                        cobertura.append(
+                            x[w, dia, p]
+                        )
 
             cobertura_total = (
 
@@ -1174,7 +1327,7 @@ class SolverLibre:
 
             exceso = model.NewIntVar(
                 0,
-                len(self.activos),
+                len(activos),
                 f"exceso_{dia}_{hora}"
             )
 
@@ -1253,53 +1406,47 @@ class SolverLibre:
                 deficit_3.Not()
             )
 
-            # =====================================
-            # COSTE DE COBERTURA
-            # =====================================
-
-            # Cuanto menor es la demanda, más importante es cubrirla al 100%
-            peso_relativo = max(1, int(10 / demanda_slot))
-
-            costes.append(
-                100 * peso_relativo * deficit
+            peso_relativo = int(
+                100 / demanda_slot
             )
 
-            costes.append(
-                10 * exceso
-            )
+            if modo_planificacion == "DEFICIT":
 
-            costes.append(
-                500 * peso_relativo * deficit_2
-            )
-
-            costes.append(
-                2000 * peso_relativo * deficit_3
-            )
-
-            costes.append(
-                50 * exceso_2
-            )
-
-            costes.append(
-                200 * exceso_3
-            )
-
-            auditoria.append(
-                (
-                    dia,
-                    hora,
-                    demanda_slot,
-                    cobertura_total,
-                    deficit,
-                    exceso
+                costes.append(
+                    peso_relativo
+                    * deficit
                 )
-            )
 
-        print("\n========================")
-        print("COSTES")
-        print("========================")
-        print(f"Número de costes: {len(costes)}")
-        print(f"Número penalización libres: {len(penalizacion_libres)}")
+                costes.append(
+                    20
+                    * peso_relativo
+                    * deficit_2
+                )
+
+                costes.append(
+                    200
+                    * peso_relativo
+                    * deficit_3
+                )
+
+            else:
+
+                costes.append(
+                    peso_relativo
+                    * exceso
+                )
+
+                costes.append(
+                    20
+                    * peso_relativo
+                    * exceso_2
+                )
+
+                costes.append(
+                    200
+                    * peso_relativo
+                    * exceso_3
+                )
 
         # =====================================
         # OBJETIVO
@@ -1329,26 +1476,27 @@ class SolverLibre:
         if MODO_DEBUG:
             print("\nHORAS SIN PATRONES POSIBLES")
 
-        for _, fila in self.demanda.iterrows():
+        for _, fila in demanda.iterrows():
 
             dia = fila["dia_semana"]
-
-            if dia not in self.dias_abiertos:
-                continue
-
             hora = fila["hora"]
 
             cobertura = 0
 
-            for p in self.patrones_por_dia[dia]:
+            for p in patrones["patron_id"]:
 
-                if hora in self.patron_horas[p]:
+                if hora in patron_horas[p]:
                     cobertura += 1
 
             if cobertura == 0:
 
                 if MODO_DEBUG:
                     print(dia, hora)
+
+        
+        if MODO_DEBUG:
+            print("\nVARIABLES:", len(model.Proto().variables))
+            print("RESTRICCIONES:", len(model.Proto().constraints))
 
         print("\nResolviendo...")
 
@@ -1404,86 +1552,44 @@ class SolverLibre:
 
             return None
         
-        print("\n========================")
-        print("VARIABLES OBJETIVO")
-        print("========================")
-
-        for dia, hora, demanda, cobertura, deficit, exceso in auditoria:
-
-            print(
-                f"{dia:9} {hora} "
-                f"Dem={demanda} "
-                f"Cob={solver.Value(cobertura)} "
-                f"Def={solver.Value(deficit)} "
-                f"Exc={solver.Value(exceso)}"
-            )
-        
-        # =====================================
-        # AUDITORÍA COBERTURA DEMANDA
-        # =====================================
-
-        print("\n==============================")
-        print("COBERTURA VS DEMANDA")
-        print("==============================")
-
-        for _, fila in self.demanda.iterrows():
-
-            dia = fila["dia_semana"]
-            hora = fila["hora"]
-            demanda = int(fila["demanda"])
-
-            cobertura = cobertura_bloqueada.get((dia, hora), 0)
-
-            trabajadores = []
-
-            for w in self.worker_ids:
-
-                for p in self.patrones_por_dia[dia]:
-
-                    if (
-                        hora in self.patron_horas[p]
-                        and
-                        solver.Value(x[w, dia, p])
-                    ):
-
-                        cobertura += 1
-                        trabajadores.append(
-                            self.nombre_trabajador[w]
-                        )
-
-            diferencia = cobertura - demanda
-
-            print(
-                f"{dia:9} {hora:>5} | "
-                f"Demanda={demanda:2d} | "
-                f"Cobertura={cobertura:2d} | "
-                f"Dif={diferencia:+2d} | "
-                f"{trabajadores}"
-            )
-        
         # =====================================
         # RESULTADO
         # =====================================
 
         resultado = []
 
-        for w in self.worker_ids:
+        for w in activos["id"]:
 
-            nombre = self.nombre_trabajador[w]
+            nombre = activos.loc[
+                activos["id"] == w,
+                "nombre"
+            ].iloc[0]
 
-            for d in self.dias:
+            for d in dias:
 
-                for p in self.patrones_por_dia[d]:
+                for _, p in patrones.iterrows():
 
-                    if solver.Value(x[w, d, p]):
+                    if solver.Value(
+
+                        x[
+                            w,
+                            d,
+                            p["patron_id"]
+                        ]
+
+                    ):
 
                         resultado.append({
 
                             "worker_id": w,
                             "nombre": nombre,
                             "dia": d,
-                            "entrada": self.entrada_patron[p],
-                            "duracion": self.duracion_patron[p]
+                            "entrada": p[
+                                "entrada_norm"
+                            ],
+                            "duracion": p[
+                                "duracion_norm"
+                            ]
 
                         })
 
@@ -1528,14 +1634,14 @@ class SolverLibre:
             print("HORAS POR TRABAJADOR")
             print("====================\n")
 
-            for w in self.worker_ids:
+            for w in activos["id"]:
 
                 horas = resultado[
                     resultado["worker_id"] == w
                 ]["duracion"].sum()
 
-                nombre = self.activos.loc[
-                    self.activos["id"] == w,
+                nombre = activos.loc[
+                    activos["id"] == w,
                     "nombre"
                 ].iloc[0]
 

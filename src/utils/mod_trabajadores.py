@@ -9,7 +9,8 @@ necesaria para que el planificador genere los calendarios de trabajo.
 
 import pandas as pd
 
-from config import USAR_FECHA_BAJA
+
+from variables_entrada import (USAR_FECHA_BAJA, MODO_DEBUG)
 
 
 class Trabajadores:
@@ -96,21 +97,22 @@ class Trabajadores:
         activos = activos.reset_index(
             drop=True
         )
+        
+        if MODO_DEBUG:
+            print("\nDEBUG TRABAJADORES")
 
-        print("\nDEBUG TRABAJADORES")
+            print(
 
-        print(
-
-            activos[
-                [
-                    "id",
-                    "nombre",
-                    "Activo",
-                    "apertura",
-                    "cierre"
+                activos[
+                    [
+                        "id",
+                        "nombre",
+                        "Activo",
+                        "apertura",
+                        "cierre"
+                    ]
                 ]
-            ]
 
-        )
+            )
 
         return activos

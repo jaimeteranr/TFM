@@ -8,6 +8,7 @@ utilizado por los modelos de predicción de ventas y demanda de personal.
 """
 
 import pandas as pd
+from variables_entrada import (MODO_DEBUG)
 
 
 class EventosLoader:
@@ -141,20 +142,22 @@ class EventosLoader:
             eventos["evento_importancia"] > 0
         ).astype(int)
 
-        print("\n========================")
-        print("COMPROBACIÓN PREFESTIVOS")
-        print("========================")
+        
+        if MODO_DEBUG:
+            print("\n========================")
+            print("COMPROBACIÓN PREFESTIVOS")
+            print("========================")
 
-        print(
-            eventos[
-                (eventos["festivo"] == 1)
-                |
-                (eventos["prefestivo"] == 1)
-            ][[
-                "Fecha",
-                "festivo",
-                "prefestivo"
-            ]]
-        )
+            print(
+                eventos[
+                    (eventos["festivo"] == 1)
+                    |
+                    (eventos["prefestivo"] == 1)
+                ][[
+                    "Fecha",
+                    "festivo",
+                    "prefestivo"
+                ]]
+            )
 
         return eventos

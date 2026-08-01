@@ -18,6 +18,7 @@ from models.mod_random_forest import RandomForestModel
 from models.mod_random_forest_optimizer import RandomForestOptimizer
 from models.mod_xgboost import XGBoostModel
 from models.mod_walk_forward import WalkForwardValidator
+from models.mod_lstm import LSTMModel
 
 print("\n========================")
 print("DECISION TREE")
@@ -124,3 +125,19 @@ walk = WalkForwardValidator(
 walk.validar()
 
 walk.resumen()
+
+print("\n========================")
+print("LSTM")
+print("========================")
+
+modelo = LSTMModel(dataset)
+
+modelo.entrenar()
+
+modelo.predecir()
+
+modelo.evaluar()
+
+modelo.importancia_variables()
+
+modelo.mostrar_predicciones()
