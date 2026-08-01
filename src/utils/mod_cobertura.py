@@ -1,69 +1,85 @@
+"""
+Módulo encargado de generar la cobertura temporal asociada a los patrones de
+turno.
+
+Transforma la información de los patrones definidos en los intervalos
+horarios que cubre cada uno de ellos, generando un conjunto de datos que
+permite analizar y evaluar la cobertura prevista para cada patrón.
+"""
+
 import pandas as pd
 from datetime import datetime, timedelta
 
 
-# =====================================
-# FUNCIONES
-# =====================================
+class CoberturaPatronesGenerator:
+    """
+    Genera la cobertura horaria correspondiente a los patrones de turno.
 
-def hora_a_datetime(hora):
+    Convierte cada patrón en la secuencia de intervalos temporales que
+    representa su cobertura, produciendo una estructura de datos preparada
+    para su utilización en los procesos de planificación y evaluación de
+    calendarios.
+    """
 
-    return datetime.strptime(
-        str(hora),
-        "%H:%M"
-    )
+    def __init__(
+        self,
+        patrones
+    ):
 
+        self.patrones = patrones
 
-# =====================================
-# COBERTURA PATRONES
-# =====================================
+    def _hora_a_datetime(
+        self,
+        hora
+    ):
 
-def generar_cobertura_patrones(
-    patrones
-):
-
-    registros = []
-
-    for _, fila in patrones.iterrows():
-
-        patron_id = fila[
-            "patron_id"
-        ]
-
-        entrada = hora_a_datetime(
-            fila["entrada_norm"]
+        return datetime.strptime(
+            str(hora),
+            "%H:%M"
         )
 
-        duracion = float(
-            fila["duracion_norm"]
-        )
+    def generar(self):
 
-        bloques = int(
-            duracion * 2
-        )
+        registros = []
 
-        actual = entrada
+        for _, fila in self.patrones.iterrows():
 
-        for _ in range(bloques):
+            patron_id = fila[
+                "patron_id"
+            ]
 
-            registros.append({
+            entrada = self._hora_a_datetime(
+                fila["entrada_norm"]
+            )
 
-                "patron_id":
-                    patron_id,
+            duracion = float(
+                fila["duracion_norm"]
+            )
 
-                "hora":
-                    actual.strftime(
+            bloques = int(
+                duracion * 2
+            )
+
+            actual = entrada
+
+            for _ in range(bloques + 1):
+
+                registros.append({
+
+                    "patron_id": patron_id,
+
+                    "hora": actual.strftime(
                         "%H:%M"
                     )
 
-            })
+                })
 
-            actual += timedelta(
-                minutes=30
-            )
+                actual += timedelta(
+                    minutes=30
+                )
 
-    cobertura = pd.DataFrame(
-        registros
-    )
+        cobertura = pd.DataFrame(
+            registros
+        )
 
-    return cobertura
+        return cobertura

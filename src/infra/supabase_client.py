@@ -1,7 +1,7 @@
 # src/infra/supabase_client.py
 
 from httpx import AsyncClient
-from src.config import settings
+from config import settings
 
 # This function creates and returns an AsyncClient instance
 def get_async_supabase_http_client() -> AsyncClient:

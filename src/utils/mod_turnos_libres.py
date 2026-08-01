@@ -1,153 +1,184 @@
+"""
+Módulo encargado de generar el catálogo de turnos libres utilizado por el
+planificador. Todos los turnos posibles.
+
+Construye el conjunto de turnos candidatos a partir de los horarios de
+apertura del establecimiento y de las reglas de planificación definidas por
+el sistema, proporcionando las alternativas que podrán ser asignadas durante
+el proceso de optimización.
+"""
+
 import pandas as pd
+from variables_entrada import (MODO_DEBUG)
 
 
-def generar_turnos_libres(
-    horarios_base,
-    reglas
-):
+class TurnosLibres:
+    """
+    Genera los turnos candidatos para la planificación.
 
-    registros = []
+    Construye un catálogo de turnos compatibles con los horarios de
+    funcionamiento y las restricciones de duración establecidas por el
+    sistema, proporcionando al planificador el conjunto de alternativas
+    disponibles para la asignación de trabajadores.
+    """
 
-    turno_id = 0
+    def generar_turnos_libres(
+        self,
+        horarios_base,
+        reglas
+    ):
 
-    min_horas = reglas[
-        "min_horas_dia"
-    ]
+        registros = []
 
-    max_horas = reglas[
-        "max_horas_dias"
-    ]
+        turno_id = 0
 
-    for dia, info in horarios_base.items():
+        min_horas = reglas[
+            "min_horas_dia"
+        ]
 
-        print("\nHORARIO LEIDO")
+        max_horas = reglas[
+            "max_horas_dias"
+        ]
 
-        print(
-            dia,
-            info["apertura"],
-            info["cierre"]
-        )
+        for dia, info in horarios_base.items():
 
-        if not info["abierto"]:
+            
+            if MODO_DEBUG:
+                print("\nHORARIO LEIDO")
 
-            continue
-
-        apertura = pd.to_datetime(
-            info["apertura"],
-            format="%H:%M"
-        )
-
-        cierre = pd.to_datetime(
-            info["cierre"],
-            format="%H:%M"
-        )
-
-        if cierre <= apertura:
-
-            cierre += pd.Timedelta(
-                days=1
-            )
-
-        cierre_real = (
-            cierre
-            +
-            pd.Timedelta(
-                minutes=reglas[
-                    "minutos_recogida"
-                ]
-            )
-        )
-
-        entrada = apertura - pd.Timedelta(
-            minutes=
-            reglas["minutos_montaje"]
-        )
-
-        while entrada <= cierre:
-
-            duracion = min_horas
-
-            # print("\n----------------")
-            # print(dia)
-            # print("apertura:", apertura)
-            # print("cierre:", cierre)
-            # print("entrada inicial:", entrada)
-
-            # print(
-            #     "probando",
-            #     entrada,
-            #     duracion,
-            #     entrada + pd.Timedelta(hours=duracion)
-            # )
-
-            contador = 0
-
-            while duracion <= max_horas:
-
-                salida = (
-
-                    entrada
-
-                    +
-
-                    pd.Timedelta(
-                        hours=duracion
-                    )
-
+                print(
+                    dia,
+                    info["apertura"],
+                    info["cierre"]
                 )
 
-                if salida <= cierre_real:
+            if not info["abierto"]:
 
-                    registros.append({
+                continue
 
-                        "turno_id":
-                        turno_id,
-
-                        "dia":
-                        dia,
-
-                        "entrada":
-                        entrada.strftime(
-                            "%H:%M"
-                        ),
-
-                        "duracion":
-                        duracion,
-
-                        "salida":
-                        salida.strftime(
-                            "%H:%M"
-                        )
-
-                    })
-
-                    turno_id += 1
-
-                duracion += 0.5
-
-            entrada += pd.Timedelta(
-                minutes=30
+            apertura = pd.to_datetime(
+                info["apertura"],
+                format="%H:%M"
             )
 
-        print(
-            "TURNOS GENERADOS:",
-            len(registros)
+            cierre = pd.to_datetime(
+                info["cierre"],
+                format="%H:%M"
+            )
+
+            if cierre <= apertura:
+
+                cierre += pd.Timedelta(
+                    days=1
+                )
+
+            cierre_real = (
+
+                cierre
+
+                +
+
+                pd.Timedelta(
+                    minutes=reglas[
+                        "minutos_recogida"
+                    ]
+                )
+
+            )
+
+            entrada = (
+
+                apertura
+
+                -
+
+                pd.Timedelta(
+                    minutes=reglas[
+                        "minutos_montaje"
+                    ]
+                )
+
+            )
+
+            while entrada <= cierre:
+
+                duracion = min_horas
+
+                while duracion <= max_horas:
+
+                    salida = (
+
+                        entrada
+
+                        +
+
+                        pd.Timedelta(
+                            hours=duracion
+                        )
+
+                    )
+
+                    if salida <= cierre_real:
+
+                        registros.append({
+
+                            "turno_id":
+                            turno_id,
+
+                            "dia":
+                            dia,
+
+                            "entrada":
+                            entrada.strftime(
+                                "%H:%M"
+                            ),
+
+                            "duracion":
+                            duracion,
+
+                            "salida":
+                            salida.strftime(
+                                "%H:%M"
+                            )
+
+                        })
+
+                        turno_id += 1
+
+                    duracion += 0.5
+
+                entrada += pd.Timedelta(
+                    minutes=30
+                )
+
+            if MODO_DEBUG:
+                print(
+                    "TURNOS GENERADOS:",
+                    len(registros)
+                )
+
+        df_debug = pd.DataFrame(
+            registros
         )
 
-    df_debug = pd.DataFrame(registros)
+        if MODO_DEBUG:
+            print(
+                "SALIDA MAXIMA:",
+                df_debug["salida"].max()
+            )
 
-    print(
-        "SALIDA MAXIMA:",
-        df_debug["salida"].max()
-    )
+        return pd.DataFrame(
 
-    return pd.DataFrame(
-        registros,
-        columns=[
-            "turno_id",
-            "dia",
-            "entrada",
-            "duracion",
-            "salida"
-        ]
-    )
+            registros,
+
+            columns=[
+
+                "turno_id",
+                "dia",
+                "entrada",
+                "duracion",
+                "salida"
+
+            ]
+
+        )

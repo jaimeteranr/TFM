@@ -2,7 +2,7 @@ import psycopg2
 from psycopg2 import sql
 from loguru import logger
 from src.application import utils
-from src.config import settings
+from config import settings
 from returns.result import Result, Success, Failure, safe
 from psycopg2.extensions import connection
 from typing import Tuple

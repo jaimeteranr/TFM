@@ -1,58 +1,81 @@
+"""
+Módulo encargado de generar la cobertura temporal asociada a los turnos de
+trabajo.
+
+Transforma la información de los turnos definidos en los intervalos horarios
+que cubre cada uno de ellos, generando un conjunto de datos que permite
+analizar y evaluar la cobertura de personal a lo largo de la planificación.
+"""
+
 import pandas as pd
 from datetime import datetime, timedelta
 
 
-def hora_a_datetime(hora):
+class CoberturaTurnosGenerator:
+    """
+    Genera la cobertura horaria correspondiente a los turnos de trabajo.
 
-    return datetime.strptime(
-        str(hora),
-        "%H:%M"
-    )
+    Convierte cada turno en la secuencia de intervalos temporales que
+    representa su cobertura efectiva, produciendo una estructura de datos
+    preparada para su utilización en los procesos de análisis y evaluación
+    de calendarios.
+    """
 
+    def __init__(
+        self,
+        turnos_libres
+    ):
 
-def generar_cobertura_turnos(
-    turnos_libres
-):
+        self.turnos_libres = turnos_libres
 
-    registros = []
+    def _hora_a_datetime(
+        self,
+        hora
+    ):
 
-    for _, fila in turnos_libres.iterrows():
-
-        turno_id = fila["turno_id"]
-
-        dia = fila["dia"]
-
-        entrada = hora_a_datetime(
-            fila["entrada"]
+        return datetime.strptime(
+            str(hora),
+            "%H:%M"
         )
 
-        bloques = int(
-            float(fila["duracion"]) * 2
-        )
+    def generar(self):
 
-        actual = entrada
+        registros = []
 
-        for _ in range(bloques + 1):
+        for _, fila in self.turnos_libres.iterrows():
 
-            registros.append({
+            turno_id = fila["turno_id"]
 
-                "turno_id":
-                    turno_id,
+            dia = fila["dia"]
 
-                "dia":
-                    dia,
+            entrada = self._hora_a_datetime(
+                fila["entrada"]
+            )
 
-                "hora":
-                    actual.strftime(
+            bloques = int(
+                float(fila["duracion"]) * 2
+            )
+
+            actual = entrada
+
+            for _ in range(bloques + 1):
+
+                registros.append({
+
+                    "turno_id": turno_id,
+
+                    "dia": dia,
+
+                    "hora": actual.strftime(
                         "%H:%M"
                     )
 
-            })
+                })
 
-            actual += timedelta(
-                minutes=30
-            )
+                actual += timedelta(
+                    minutes=30
+                )
 
-    return pd.DataFrame(
-        registros
-    )
+        return pd.DataFrame(
+            registros
+        )

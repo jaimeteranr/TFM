@@ -1,108 +1,151 @@
+"""
+Módulo encargado de gestionar los horarios base de funcionamiento del
+establecimiento.
+
+Carga la configuración de apertura y cierre correspondiente a cada
+temporada, proporcionando una representación unificada de los horarios de
+funcionamiento utilizada por los procesos de planificación de calendarios.
+"""
+
 import pandas as pd
+from variables_entrada import (MODO_DEBUG)
 
 
-def cargar_horarios_base(
-    temporada
-):
+class HorariosBaseLoader:
+    """
+    Gestiona la carga de los horarios base del establecimiento.
 
-    horarios = pd.read_excel(
-        "data/inputs/horario_base.xlsx"
-    )
+    Obtiene la configuración de apertura y cierre asociada a cada temporada,
+    adaptando la información a un formato homogéneo que facilita su
+    utilización por los distintos módulos del planificador.
+    """
 
-    temporadas = pd.read_excel(
-        "data/inputs/temporada.xlsx"
-    )
+    def __init__(self):
 
-    print("\nDEBUG HORARIO_BASE\n")
+        self.horarios = None
+        self.temporadas = None
 
-    print(
-        horarios[
-            [
-                "dia_semana",
-                "apertura",
-                "cierre"
-            ]
-        ].head(10)
-    )
+    # =====================================
+    # CARGAR HORARIOS BASE
+    # =====================================
 
-    print(
-        type(
-            horarios.iloc[0]["apertura"]
+    def cargar(
+        self,
+        temporada
+    ):
+
+        self.horarios = pd.read_excel(
+            "data/inputs/horario_base.xlsx"
         )
-    )
 
-    print(
-        type(
-            horarios.iloc[0]["cierre"]
+        self.temporadas = pd.read_excel(
+            "data/inputs/temporada.xlsx"
         )
-    )
 
-    id_temporada = int(
+        if MODO_DEBUG: 
 
-        temporadas.loc[
-            temporadas["nombre"]
-            == temporada,
-            "id"
-        ].iloc[0]
+            print("\nDEBUG HORARIO_BASE\n")
 
-    )
+            print(
 
-    horarios = horarios[
+                self.horarios[
+                    [
+                        "dia_semana",
+                        "apertura",
+                        "cierre"
+                    ]
+                ].head(10)
 
-        horarios["id_temporada"]
-        ==
-        id_temporada
-
-    ]
-
-    dias_map = {
-
-        "lunes": "Monday",
-        "martes": "Tuesday",
-        "miercoles": "Wednesday",
-        "jueves": "Thursday",
-        "viernes": "Friday",
-        "sabado": "Saturday",
-        "domingo": "Sunday"
-
-    }
-
-    resultado = {}
-
-    for _, fila in horarios.iterrows():
-
-        apertura = None
-        cierre = None
-
-        if pd.notna(fila["apertura"]):
-
-            apertura = fila["apertura"].strftime(
-                "%H:%M"
             )
 
-        if pd.notna(fila["cierre"]):
-
-            cierre = fila["cierre"].strftime(
-                "%H:%M"
+            print(
+                type(
+                    self.horarios.iloc[0]["apertura"]
+                )
             )
 
-        resultado[
-            dias_map[
-                fila["dia_semana"]
-            ]
-        ] = {
+            print(
+                type(
+                    self.horarios.iloc[0]["cierre"]
+                )
+            )
+        
 
-            "abierto":
-            int(
-                fila["abierto"]
-            ),
+        id_temporada = int(
 
-            "apertura":
-            apertura,
+            self.temporadas.loc[
 
-            "cierre":
-            cierre
+                self.temporadas["nombre"]
+                == temporada,
+
+                "id"
+
+            ].iloc[0]
+
+        )
+
+        horarios = self.horarios[
+
+            self.horarios["id_temporada"]
+
+            == id_temporada
+
+        ].copy()
+
+        dias_map = {
+
+            "lunes": "Monday",
+
+            "martes": "Tuesday",
+
+            "miercoles": "Wednesday",
+
+            "jueves": "Thursday",
+
+            "viernes": "Friday",
+
+            "sabado": "Saturday",
+
+            "domingo": "Sunday"
 
         }
 
-    return resultado
+        resultado = {}
+
+        for _, fila in horarios.iterrows():
+
+            apertura = None
+            cierre = None
+
+            if pd.notna(fila["apertura"]):
+
+                apertura = fila["apertura"].strftime(
+                    "%H:%M"
+                )
+
+            if pd.notna(fila["cierre"]):
+
+                cierre = fila["cierre"].strftime(
+                    "%H:%M"
+                )
+
+            resultado[
+                dias_map[
+                    fila["dia_semana"]
+                ]
+            ] = {
+
+                "abierto":
+                    int(
+                        fila["abierto"]
+                    ),
+
+                "apertura":
+                    apertura,
+
+                "cierre":
+                    cierre
+
+            }
+
+        return resultado

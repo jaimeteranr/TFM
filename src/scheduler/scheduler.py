@@ -7,7 +7,7 @@ sys.path.append(
     )
 )
 
-from config import *
+from variables_entrada import *
 
 import sys
 from pathlib import Path
@@ -18,22 +18,18 @@ sys.path.append(
     str(ROOT / "utils")
 )
 
-from mod_config import *
-from mod_temporada import *
-from mod_demanda import *
-from mod_patrones import *
-from mod_cobertura import *
-from mod_trabajadores import *
-from mod_solver import (
-    resolver_scheduler
-)
-from mod_solver_libre import (
-    resolver_scheduler_libre
-)
-from mod_turnos_bloqueados import *
-from mod_horarios_base import *
-from mod_turnos_libres import *
-from mod_cobertura_turnos import *
+from mod_config import SchedulerConfig
+from mod_temporada import Temporada
+from mod_demanda import DemandaExtractor
+from mod_patrones import PatronesManager
+from mod_cobertura import CoberturaPatronesGenerator
+from mod_trabajadores import Trabajadores
+from mod_solver import SolverPatrones
+from mod_solver_libre import SolverLibre
+from mod_turnos_bloqueados import TurnosBloqueados
+from mod_horarios_base import HorariosBaseLoader
+from mod_turnos_libres import TurnosLibres
+from mod_cobertura_turnos import CoberturaTurnosGenerator
 
 # =====================================
 # CABECERA
@@ -52,26 +48,26 @@ print(
 # REGLAS
 # =====================================
 
-reglas = cargar_reglas()
+config = SchedulerConfig()
+
+reglas = config.cargar()
 
 if MODO_DEBUG:
 
-    mostrar_reglas(
-        reglas
-    )
+    config.mostrar()
 
 # =====================================
 # TEMPORADA
 # =====================================
 
-temporada = obtener_temporada(
+temporada = Temporada().obtener_temporada(
     FECHA_INICIO_SEMANA
 )
 
-horarios_base = (
-    cargar_horarios_base(
-        temporada
-    )
+loader_horarios = HorariosBaseLoader()
+
+horarios_base = loader_horarios.cargar(
+    temporada
 )
 
 if MODO_DEBUG:
@@ -84,107 +80,135 @@ if MODO_DEBUG:
         temporada
     )
 
-# =====================================
-# TURNOS LIBRES
-# =====================================
+if MODO_DEBUG:
+    # =====================================
+    # TURNOS LIBRES
+    # =====================================
 
-print("\nHORARIOS BASE COMPLETOS\n")
+    print("\nHORARIOS BASE COMPLETOS\n")
 
-for dia, info in horarios_base.items():
+    for dia, info in horarios_base.items():
 
-    print(
-        dia,
-        info
-    )
+        print(
+            dia,
+            info
+        )
 
 turnos_libres = (
-    generar_turnos_libres(
+    TurnosLibres().generar_turnos_libres(
         horarios_base,
         reglas
     )
 )
 
-print("\n========================")
-print("TURNOS LIBRES")
-print("========================\n")
+if MODO_DEBUG:
 
-print(
-    turnos_libres.head(20)
-)
+    print("\n========================")
+    print("TURNOS LIBRES")
+    print("========================\n")
 
-print(
-    "\nTotal turnos:",
-    len(turnos_libres)
-)
+    print(
+        turnos_libres.head(20)
+    )
 
-cobertura_turnos = generar_cobertura_turnos(
+    print(
+        "\nTotal turnos:",
+        len(turnos_libres)
+    )
+
+cobertura_turnos_generator = CoberturaTurnosGenerator(
     turnos_libres
 )
 
-print("\n========================")
-print("COBERTURA TURNOS")
-print("========================\n")
-
-print(
-    cobertura_turnos.head(30)
+cobertura_turnos = (
+    cobertura_turnos_generator.generar()
 )
 
-print(
-    "\nTotal registros:",
-    len(cobertura_turnos)
-)
+if MODO_DEBUG: 
+    print("\n========================")
+    print("COBERTURA TURNOS")
+    print("========================\n")
+
+    print(
+        cobertura_turnos.head(30)
+    )
+
+    print(
+        "\nTotal registros:",
+        len(cobertura_turnos)
+    )
 
 # =====================================
 # DEMANDA
 # =====================================
 
-demanda = extraer_demanda(
-    temporada
-)
+extractor_demanda = DemandaExtractor()
 
-print("\n========================")
-print("DEMANDA")
-print("========================\n")
+if MODO_DEMANDA == "HISTORICA":
 
-print(
-    demanda.head(30)
-)
-
-print(
-    "\nTotal registros:",
-    len(demanda)
-)
-
-print("\n========================")
-print("DIAS DEMANDA")
-print("========================\n")
-
-print(
-    sorted(
-        demanda["dia_semana"]
-        .unique()
-        .tolist()
+    demanda = extractor_demanda.extraer_historica(
+        temporada
     )
-)
 
-print("\n========================")
-print("DIAS COBERTURA")
-print("========================\n")
+elif MODO_DEMANDA == "PREDICCION":
 
-print(
-    sorted(
-        cobertura_turnos["dia"]
-        .unique()
-        .tolist()
+    demanda = extractor_demanda.extraer_prediccion(
+        FECHA_INICIO_SEMANA
     )
-)
+
+else:
+
+    raise ValueError(
+        f"MODO_DEMANDA desconocido: {MODO_DEMANDA}"
+    )
+
+if MODO_DEBUG: 
+
+    print("\n========================")
+    print("DEMANDA")
+    print("========================\n")
+
+    print(
+        demanda.head(30)
+    )
+
+    print(
+        "\nTotal registros:",
+        len(demanda)
+    )
+
+    print("\n========================")
+    print("DIAS DEMANDA")
+    print("========================\n")
+
+    print(
+        sorted(
+            demanda["dia_semana"]
+            .unique()
+            .tolist()
+        )
+    )
+
+    print("\n========================")
+    print("DIAS COBERTURA")
+    print("========================\n")
+
+    print(
+        sorted(
+            cobertura_turnos["dia"]
+            .unique()
+            .tolist()
+        )
+    )
 
 # =====================================
 # PATRONES HISTORICOS
 # =====================================
 
+patrones_manager = PatronesManager()
+
 patrones_historicos = (
-    extraer_patrones_historicos()
+    patrones_manager.extraer_historicos()
 )
 
 if MODO_DEBUG:
@@ -206,7 +230,7 @@ if MODO_DEBUG:
 # CATALOGO PATRONES
 # =====================================
 
-patrones = filtrar_patrones(
+patrones = patrones_manager.filtrar(
     patrones_historicos,
     reglas
 )
@@ -230,10 +254,12 @@ if MODO_DEBUG:
 # COBERTURA PATRONES
 # =====================================
 
+cobertura_patrones_generator = CoberturaPatronesGenerator(
+    patrones
+)
+
 cobertura_patrones = (
-    generar_cobertura_patrones(
-        patrones
-    )
+    cobertura_patrones_generator.generar()
 )
 
 if MODO_DEBUG:
@@ -275,27 +301,31 @@ if MODO_DEBUG:
 # =====================================
 
 activos = (
-    obtener_trabajadores_activos(
+    Trabajadores().obtener_trabajadores_activos(
         FECHA_INICIO_SEMANA
     )
 )
 
-print(
-    "\nModo trabajadores:",
-    (
-        "FECHAS"
-        if USAR_FECHA_BAJA
-        else
-        "ACTIVO"
-    )
+if MODO_DEBUG: 
+
+    print(
+        "\nModo trabajadores:",
+        (
+            "FECHAS"
+            if USAR_FECHA_BAJA
+            else
+            "ACTIVO"
+        )
 )
 
 turnos_bloqueados = (
-    cargar_turnos_bloqueados()
+    TurnosBloqueados().cargar_turnos_bloqueados()
 )
 
-print("\nTURNOS BLOQUEADOS\n")
-print(turnos_bloqueados)
+if MODO_DEBUG: 
+
+    print("\nTURNOS BLOQUEADOS\n")
+    print(turnos_bloqueados)
 
 # =====================================
 # CAPACIDAD SEMANAL
@@ -340,26 +370,27 @@ else:
 
     modo_planificacion = "EXCESO"
 
-print("\n========================")
-print("CAPACIDAD")
-print("========================\n")
+if MODO_DEBUG: 
+    print("\n========================")
+    print("CAPACIDAD")
+    print("========================\n")
 
-print(
-    f"Horas disponibles: {horas_disponibles}"
-)
+    print(
+        f"Horas disponibles: {horas_disponibles}"
+    )
 
-print(
-    f"Horas demandadas: {horas_demandadas}"
-)
+    print(
+        f"Horas demandadas: {horas_demandadas}"
+    )
 
-print(
-    f"Modo: {modo_planificacion}"
-)
+    print(
+        f"Modo: {modo_planificacion}"
+    )
 
-print(
-    "Descansos:",
-    ACTIVAR_DESCANSOS
-)
+    print(
+        "Descansos:",
+        ACTIVAR_DESCANSOS
+    )
 
 if MODO_DEBUG:
 
@@ -387,10 +418,11 @@ if MODO_DEBUG:
 
 if MODO_SOLVER == "PATRONES":
 
-
     print("\nSOLVER: PATRONES")
 
-    calendario = resolver_scheduler(
+    solver = SolverPatrones()
+
+    calendario = solver.resolver(
         activos,
         demanda,
         patrones,
@@ -406,7 +438,33 @@ elif MODO_SOLVER == "LIBRE":
 
     print("\nSOLVER: LIBRE")
 
-    calendario = resolver_scheduler_libre(
+    # if MODO_DEBUG:
+        
+        # print("\nTURNOS LIBRES")
+        # print(turnos_libres.head())
+        # print(turnos_libres.columns)
+
+        # print("\nCOBERTURA TURNOS")
+        # print(cobertura_turnos.head())
+        # print(cobertura_turnos.columns)
+
+    turnos_libres = turnos_libres.rename(
+        columns={
+            "turno_id": "patron_id",
+            "entrada": "entrada_norm",
+            "duracion": "duracion_norm",
+        }
+    )
+
+    cobertura_turnos = cobertura_turnos.rename(
+        columns={
+            "turno_id": "patron_id"
+        }
+    )
+
+    solver = SolverLibre()
+
+    calendario = solver.resolver(
         activos,
         demanda,
         turnos_libres,
@@ -449,6 +507,6 @@ if calendario is not None:
 # VISUALIZACION
 # =====================================
 
-from mod_visualizacion import *
+from mod_visualizacion import Visualizacion
 
-generar_visualizacion()
+Visualizacion().generar_visualizacion()

@@ -1,39 +1,61 @@
+"""
+Módulo encargado de gestionar la configuración del planificador.
+
+Carga las reglas y parámetros de funcionamiento definidos para el sistema de
+planificación, proporcionando una interfaz unificada para acceder a la
+configuración utilizada por los distintos procesos de generación y
+optimización de calendarios.
+"""
+
 import pandas as pd
 
-from config import *
 
-# =====================================
-# CARGAR REGLAS
-# =====================================
+class SchedulerConfig:
+    """
+    Gestiona la configuración utilizada por el planificador.
 
-def cargar_reglas():
+    Centraliza la carga y acceso a las reglas de funcionamiento del sistema,
+    facilitando su utilización por los distintos módulos implicados en la
+    generación y evaluación de los calendarios de trabajo.
+    """
 
-    df = pd.read_excel(
-        "data/inputs/reglas_local.xlsx"
-    )
+    def __init__(
+        self,
+        fichero="data/inputs/reglas_local.xlsx"
+    ):
 
-    reglas = dict(
-        zip(
-            df["parametro"],
-            df["valor"]
+        self.fichero = fichero
+
+        self.reglas = None
+
+    def cargar(self):
+
+        df = pd.read_excel(
+            self.fichero
         )
-    )
 
-    return reglas
+        self.reglas = dict(
 
+            zip(
 
-# =====================================
-# MOSTRAR REGLAS
-# =====================================
+                df["parametro"],
 
-def mostrar_reglas(reglas):
+                df["valor"]
 
-    print("\n========================")
-    print("REGLAS")
-    print("========================\n")
+            )
 
-    for k, v in reglas.items():
-
-        print(
-            f"{k}: {v}"
         )
+
+        return self.reglas
+
+    def mostrar(self):
+
+        print("\n========================")
+        print("REGLAS")
+        print("========================\n")
+
+        for k, v in self.reglas.items():
+
+            print(
+                f"{k}: {v}"
+            )

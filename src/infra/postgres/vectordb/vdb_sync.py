@@ -2,7 +2,7 @@ import numpy as np
 from sqlmodel import text
 from loguru import logger
 from psycopg2 import sql
-from src.config import settings
+from config import settings
 from src.application import utils
 from src.infra.postgres.database_sync import get_db_sync
 

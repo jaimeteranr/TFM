@@ -2,20 +2,38 @@
 # SEMANA A PLANIFICAR
 # =====================================
 
-FECHA_INICIO_SEMANA = "2026-06-15" # Formato: "YYYY-MM-DD"
+FECHA_INICIO_SEMANA = "2026-08-03" # Formato: "YYYY-MM-DD"
 
 # =====================================
 # SOLVER
 # =====================================
 
-MODO_SOLVER = "PATRONES" # "LIBRE" o "PATRONES"
+MODO_SOLVER = "LIBRE" # "LIBRE" o "PATRONES"
+
+# =====================================
+# DEMANDA
+# =====================================
+
+MODO_DEMANDA = "HISTORICA" # "HISTORICA" o "PREDICCION"
+
+# =====================================
+# MODELO DE PREDICCIÓN
+# =====================================
+
+MODELO_PREDICCION = "xgboost"
+
+# Opciones:
+# "xgboost"
+# "lstm"
+# "random_forest"
+# "decision_tree"
 
 # =====================================
 # DEBUG:
 # - MODO_DEBUG: Si es True, se mostrarán mensajes de depuración adicionales.
 # =====================================
 
-MODO_DEBUG = True
+MODO_DEBUG = False
 
 # =====================================
 # MOSTRAR_CALENDARIO: Si es True, se mostrará un calendario visual de la semana planificada.
@@ -50,7 +68,7 @@ USAR_FECHA_BAJA = False
 # TURNOS BLOQUEADOS, SI SE QUIERE USAR, DEBE EXISTIR EL ARCHIVO "turnos_bloqueados.xlsx"
 # =====================================
 
-USAR_TURNOS_BLOQUEADOS = True
+USAR_TURNOS_BLOQUEADOS = False
 
 # =====================================
 # PESO PARA PREMIAR DIAS LIBRES JUNTOS
