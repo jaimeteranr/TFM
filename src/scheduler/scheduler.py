@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 
+
 sys.path.append(
     str(
         Path(__file__).parent
@@ -8,10 +9,6 @@ sys.path.append(
 )
 
 from variables_entrada import *
-
-import sys
-from pathlib import Path
-
 ROOT = Path(__file__).resolve().parent.parent
 
 sys.path.append(
@@ -47,7 +44,6 @@ print(
 # =====================================
 # REGLAS
 # =====================================
-
 config = SchedulerConfig()
 
 reglas = config.cargar()
@@ -210,6 +206,7 @@ patrones_manager = PatronesManager()
 patrones_historicos = (
     patrones_manager.extraer_historicos()
 )
+
 
 if MODO_DEBUG:
 

@@ -10,6 +10,7 @@ contextuales del establecimiento.
 from .mod_model_base import ModelBase
 
 from xgboost import XGBRegressor
+from pathlib import Path
 
 
 class XGBoostModel(ModelBase):
@@ -24,11 +25,14 @@ class XGBoostModel(ModelBase):
 
     def __init__(
         self,
-        dataset
+        dataset,
+        ruta_modelo=None
     ):
 
         super().__init__(dataset)
 
+        self.ruta_modelo = ruta_modelo
+        
     def entrenar(
 
         self,
@@ -47,7 +51,7 @@ class XGBoostModel(ModelBase):
 
         if X_train is None:
 
-            self.separar_train_test()
+            self.preparar_train_test()
 
         else:
 
@@ -103,8 +107,25 @@ class XGBoostModel(ModelBase):
             "XGBoost entrenado correctamente."
         )
 
+        if self.ruta_modelo is not None:
+
+            self.ruta_modelo.mkdir(
+                parents=True,
+                exist_ok=True
+            )
+
+            ruta = (
+                self.ruta_modelo
+                / "modelo_xgboost.json"
+            )
+
+        else:
+
+            ruta = "modelo_xgboost.json"
+
+
         self.model.save_model(
-            "modelo_xgboost.json"
+            ruta
         )
 
         print("Modelo guardado.")

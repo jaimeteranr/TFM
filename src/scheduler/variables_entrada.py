@@ -2,7 +2,7 @@
 # SEMANA A PLANIFICAR
 # =====================================
 
-FECHA_INICIO_SEMANA = "2026-08-03" # Formato: "YYYY-MM-DD"
+FECHA_INICIO_SEMANA = "2026-08-24" # Formato: "YYYY-MM-DD"
 
 # =====================================
 # SOLVER
@@ -14,7 +14,7 @@ MODO_SOLVER = "LIBRE" # "LIBRE" o "PATRONES"
 # DEMANDA
 # =====================================
 
-MODO_DEMANDA = "HISTORICA" # "HISTORICA" o "PREDICCION"
+MODO_DEMANDA = "PREDICCION" # "HISTORICA" o "PREDICCION"
 
 # =====================================
 # MODELO DE PREDICCIÓN
@@ -27,6 +27,23 @@ MODELO_PREDICCION = "xgboost"
 # "lstm"
 # "random_forest"
 # "decision_tree"
+
+TIPO_PREDICCION = "mensual"
+
+# Opciones:
+# "estacional"
+# "completa"
+# "mensual"
+
+# =====================================
+# DIVISIÓN TRAIN / TEST
+# =====================================
+
+TIPO_SPLIT = "mensual"
+
+# Opciones:
+# "mensual" 1 semana al mes para test
+# "temporal" 25% final para test
 
 # =====================================
 # DEBUG:

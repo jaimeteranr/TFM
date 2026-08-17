@@ -8,7 +8,7 @@ utilizado por los modelos de predicción de ventas y demanda de personal.
 """
 
 import pandas as pd
-from variables_entrada import (MODO_DEBUG)
+from src.scheduler.variables_entrada import (MODO_DEBUG)
 
 
 class EventosLoader:

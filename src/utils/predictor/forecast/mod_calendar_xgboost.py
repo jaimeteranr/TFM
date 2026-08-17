@@ -32,18 +32,18 @@ FEATURES = [
             "prefestivo",
             "fin_semana",
             "evento",
-            "evento_importancia",
+            #"evento_importancia",
             "racing",
             "hora_racing_decimal",
-            "racing_tarde",
-            "racing_noche",
-            "hora_fin_semana",
-            "ventas_lag_1h",
-            "ventas_lag_2h",
-            "ventas_lag_24h",
-            "ventas_lag_168h",
-            "ventas_media_3h",
-            "ventas_media_24h"
+            #"racing_tarde",
+            #"racing_noche",
+            #"hora_fin_semana",
+            #"ventas_lag_1h",
+            #"ventas_lag_2h",
+            #"ventas_lag_24h",
+            #"ventas_lag_168h",
+            #"ventas_media_3h",
+            #"ventas_media_24h"
         ]
 
 XGBOOST_MODEL_PATH = (
@@ -73,7 +73,7 @@ SCALER_Y_PATH = (
 class CalendarPredictorXGBoost:
     """
     Realiza la predicción de ventas para un periodo futuro.
-
+    
     Construye el conjunto de datos correspondiente al intervalo solicitado y
     aplica el modelo de predicción de forma iterativa para estimar las ventas
     de cada hora. El resultado constituye la base para la posterior
@@ -81,17 +81,21 @@ class CalendarPredictorXGBoost:
     trabajo.
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+        ruta_modelo
+    ):
 
         ruta_modelo = (
-            Path(__file__).resolve().parent.parent
-            / "models"
+            Path(ruta_modelo)
             / "modelo_xgboost.json"
         )
 
         self.model = XGBRegressor()
 
-        self.model.load_model(ruta_modelo)
+        self.model.load_model(
+            ruta_modelo
+        )
 
     def predecir(
         self,
