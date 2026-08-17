@@ -9,6 +9,7 @@ from pathlib import Path
 
 import joblib
 import numpy as np
+import pandas as pd
 
 from sklearn.preprocessing import MinMaxScaler
 
@@ -21,20 +22,44 @@ from tensorflow.keras.layers import (
 from tensorflow.keras.callbacks import EarlyStopping
 
 from .mod_model_base import ModelBase
+from variables_entrada import TIPO_SPLIT
 
 
 SEQUENCE_LENGTH = 24
 
 FEATURES_LSTM = [
+    "temperatura_celsius",
+    "humedad_porcentaje",
+    "lluvia_mm",
+    "nubosidad_porcentaje",
+    "viento_km_h",
+    "weather_code",
+
+    "hora",
+    "dia_semana",
+
+    "festivo",
+    "prefestivo",
+    "fin_semana",
+
+    "evento",
+
+    "racing",
+    "hora_racing_decimal",
+
     "ventas"
+
 ]
+
+N_FEATURES = len(FEATURES_LSTM)
 
 
 class LSTMModel(ModelBase):
 
     def __init__(
         self,
-        dataset
+        dataset,
+        ruta_modelo=None
     ):
 
         super().__init__(dataset)
@@ -44,6 +69,8 @@ class LSTMModel(ModelBase):
         self.scaler_y = MinMaxScaler()
 
         self.sequence_length = SEQUENCE_LENGTH
+
+        self.ruta_modelo = ruta_modelo
 
     # =====================================
     # CREAR SECUENCIAS
@@ -57,22 +84,102 @@ class LSTMModel(ModelBase):
         X = []
         y = []
 
-        ventas = dataset["ventas"].values.reshape(-1, 1)
+        # =====================================
+        # ORDENAR POR FECHA
+        # =====================================
 
-        for i in range(self.sequence_length, len(dataset)):
+        dataset = dataset.sort_values(
+            "Fecha"
+        ).copy()
+
+        # =====================================
+        # SEPARAR POR AÑO
+        # =====================================
+
+        for _, grupo in dataset.groupby(
+            dataset["Fecha"].dt.year
+        ):
+
+            grupo = grupo.sort_values(
+                "Fecha"
+            ).copy()
+
+            # Necesitamos al menos 25 observaciones
+            if len(grupo) <= self.sequence_length:
+                continue
+
+            variables = grupo[
+                FEATURES_LSTM
+            ].values
+
+            ventas = grupo[
+                "ventas"
+            ].values
+
+            # =================================
+            # CREAR SECUENCIAS
+            # =================================
+
+            for i in range(
+                self.sequence_length,
+                len(grupo)
+            ):
+
+                X.append(
+                    variables[
+                        i - self.sequence_length:i
+                    ]
+                )
+
+                y.append(
+                    ventas[i]
+                )
+
+        return (
+            np.array(X),
+            np.array(y)
+        )
+
+    def _crear_secuencias_continuas(
+        self,
+        dataset
+    ):
+
+        X = []
+        y = []
+
+        dataset = dataset.sort_values(
+            "Fecha"
+        ).copy()
+
+        variables = dataset[
+            FEATURES_LSTM
+        ].values
+
+        ventas = dataset[
+            "ventas"
+        ].values
+
+        for i in range(
+            self.sequence_length,
+            len(dataset)
+        ):
 
             X.append(
-                ventas[i-self.sequence_length:i]
+                variables[
+                    i - self.sequence_length:i
+                ]
             )
 
             y.append(
                 ventas[i]
             )
+
         return (
             np.array(X),
             np.array(y)
         )
-    
+
     # =====================================
     # CREAR UNA ÚNICA SECUENCIA
     # =====================================
@@ -82,16 +189,18 @@ class LSTMModel(ModelBase):
         dataset
     ):
 
-        X = dataset["ventas"].values.reshape(-1, 1)
+        X = dataset[
+            FEATURES_LSTM
+        ].values
+
+        X = self.scaler_X.transform(
+            X
+        )
 
         return X.reshape(
-
             1,
-
             self.sequence_length,
-
-            len(FEATURES_LSTM)
-
+            N_FEATURES
         )
     
     # =====================================
@@ -258,30 +367,101 @@ class LSTMModel(ModelBase):
             self.X_test.index
         ].copy()
 
-        # -------------------------
-        # Crear secuencias
-        # -------------------------
+        train = train.sort_values(
+            "Fecha"
+        ).copy()
 
-        X_train, y_train = self._crear_secuencias(
-            train
-        )
+        test = test.sort_values(
+            "Fecha"
+        ).copy()
 
-        X_test, y_test = self._crear_secuencias(
-            test
-        )
+        # =====================================
+        # CREAR SECUENCIAS
+        # =====================================
 
-        # -------------------------
-        # Ajustar test
-        # -------------------------
+        if TIPO_SPLIT == "mensual":
 
-        self.test = test.iloc[
-            self.sequence_length:
-        ].copy()
+            # ---------------------------------
+            # COMPORTAMIENTO ORIGINAL
+            # ---------------------------------
+
+            X_train, y_train = self._crear_secuencias_continuas(
+                train
+            )
+
+            X_test, y_test = self._crear_secuencias_continuas(
+                test
+            )
+
+            self.test = test.iloc[
+                self.sequence_length:
+            ].copy()
+
+            self.train = train.iloc[
+                self.sequence_length:
+            ].copy()
 
 
-        # -------------------------
-        # Escalar
-        # -------------------------
+        elif TIPO_SPLIT == "temporal":
+
+            # ---------------------------------
+            # TRAIN
+            # ---------------------------------
+
+            X_train, y_train = self._crear_secuencias(
+                train
+            )
+
+            # ---------------------------------
+            # ÚLTIMAS 24 HORAS DEL TRAIN
+            # COMO CONTEXTO DEL TEST
+            # ---------------------------------
+
+            contexto = train.iloc[
+                -self.sequence_length:
+            ].copy()
+
+            # ---------------------------------
+            # CONTEXTO + TEST
+            # ---------------------------------
+
+            test_con_contexto = pd.concat(
+                [
+                    contexto,
+                    test
+                ],
+                ignore_index=True
+            )
+
+            # ---------------------------------
+            # SECUENCIAS TEST
+            # ---------------------------------
+
+            X_test, y_test = self._crear_secuencias(
+                test_con_contexto
+            )
+
+            # ---------------------------------
+            # REFERENCIAS
+            # ---------------------------------
+
+            self.train = train.iloc[
+                self.sequence_length:
+            ].copy()
+
+            self.test = test.iloc[
+                self.sequence_length:
+            ].copy()
+
+        else:
+ 
+            raise ValueError(
+                f"TIPO_SPLIT desconocido: {TIPO_SPLIT}"
+            )
+
+        # =====================================
+        # ESCALAR
+        # =====================================
 
         X_train, X_test, y_train, y_test = self._escalar(
 
@@ -293,24 +473,27 @@ class LSTMModel(ModelBase):
 
         )
 
+        # =====================================
+        # GUARDAR
+        # =====================================
+
         self.X_train = X_train
         self.X_test = X_test
 
         self.y_train = y_train
         self.y_test = y_test
 
-
-        # -------------------------
-        # Modelo
-        # -------------------------
+        # =====================================
+        # MODELO
+        # =====================================
 
         self._construir_modelo(
-            X_train.shape[2]
+            N_FEATURES
         )
 
-        # -------------------------
-        # Early stopping
-        # -------------------------
+        # =====================================
+        # EARLY STOPPING
+        # =====================================
 
         early = EarlyStopping(
 
@@ -322,9 +505,9 @@ class LSTMModel(ModelBase):
 
         )
 
-        # -------------------------
-        # Entrenamiento
-        # -------------------------
+        # =====================================
+        # ENTRENAMIENTO
+        # =====================================
 
         self.model.fit(
 
@@ -356,25 +539,80 @@ class LSTMModel(ModelBase):
             "LSTM entrenada correctamente."
         )
 
-        MODELS_PATH = Path(__file__).resolve().parent
+        # =====================================
+        # GUARDAR MODELO
+        # =====================================
+
+        # =====================================
+        # RUTA DE GUARDADO
+        # =====================================
+
+        if self.ruta_modelo is not None:
+
+            self.ruta_modelo.mkdir(
+                parents=True,
+                exist_ok=True
+            )
+
+            ruta_modelo = (
+                self.ruta_modelo
+                / "modelo_lstm.keras"
+            )
+
+            ruta_scaler_X = (
+                self.ruta_modelo
+                / "scaler_X.pkl"
+            )
+
+            ruta_scaler_y = (
+                self.ruta_modelo
+                / "scaler_y.pkl"
+            )
+
+        else:
+
+            MODELS_PATH = (
+                Path(__file__).resolve().parent
+            )
+
+            ruta_modelo = (
+                MODELS_PATH
+                / "modelo_lstm.keras"
+            )
+
+            ruta_scaler_X = (
+                MODELS_PATH
+                / "scaler_X.pkl"
+            )
+
+            ruta_scaler_y = (
+                MODELS_PATH
+                / "scaler_y.pkl"
+            )
+
+
+        # =====================================
+        # GUARDAR
+        # =====================================
 
         self.model.save(
-            MODELS_PATH / "modelo_lstm.keras"
+            ruta_modelo
         )
 
         joblib.dump(
             self.scaler_X,
-            MODELS_PATH / "scaler_X.pkl"
+            ruta_scaler_X
         )
 
         joblib.dump(
             self.scaler_y,
-            MODELS_PATH / "scaler_y.pkl"
+            ruta_scaler_y
         )
 
         print(
-            "Modelo guardado."
+            "Modelo y scalers guardados."
         )
+
 
     # =====================================
     # PREDECIR
@@ -416,7 +654,4 @@ class LSTMModel(ModelBase):
 
         print()
 
-        print(
-            "Las redes neuronales LSTM no disponen de una "
-            "importancia de variables directa."
-        )
+        

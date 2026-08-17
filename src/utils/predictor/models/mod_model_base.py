@@ -10,12 +10,15 @@ de esta clase e implementan únicamente el algoritmo de aprendizaje.
 
 import pandas as pd
 import numpy as np
+import time
 
 from sklearn.metrics import (
     mean_absolute_error,
     mean_squared_error,
     r2_score
 )
+
+from variables_entrada import TIPO_SPLIT
 
 class ModelBase:
     """
@@ -55,6 +58,14 @@ class ModelBase:
 
         self.predicciones = None
         self.test = None
+        self.train = None
+
+        # =====================================
+        # TIEMPOS
+        # =====================================
+
+        self.training_time = None
+        self.prediction_time = None
 
     FEATURES = [
 
@@ -70,18 +81,18 @@ class ModelBase:
         "prefestivo",
         "fin_semana",
         "evento",
-        "evento_importancia",
+        #"evento_importancia",
         "racing",
         "hora_racing_decimal",
-        "racing_tarde",
-        "racing_noche",
-        "hora_fin_semana",
-        "ventas_lag_1h",
-        "ventas_lag_2h",
-        "ventas_lag_24h",
-        "ventas_lag_168h",
-        "ventas_media_3h",
-        "ventas_media_24h"
+        #"racing_tarde",
+        #"racing_noche",
+        #"hora_fin_semana",
+        #"ventas_lag_1h",
+        #"ventas_lag_2h",
+        #"ventas_lag_24h",
+        #"ventas_lag_168h",
+        #"ventas_media_3h",
+        #"ventas_media_24h"
 
     ]
 
@@ -98,6 +109,46 @@ class ModelBase:
         ]
 
         return X, y
+
+    def separar_temporadas(self):
+
+        dataset = self.dataset.copy()
+
+        fecha = dataset["Fecha"]
+
+        # =====================================
+        # VERANO
+        # 15 JUNIO -> 15 SEPTIEMBRE
+        # =====================================
+
+        verano = dataset[
+            (
+                (
+                    (fecha.dt.month == 6)
+                    & (fecha.dt.day >= 15)
+                )
+                |
+                (fecha.dt.month.isin([7, 8]))
+                |
+                (
+                    (fecha.dt.month == 9)
+                    & (fecha.dt.day <= 15)
+                )
+            )
+        ].copy()
+
+        # =====================================
+        # INVIERNO
+        # 16 SEPTIEMBRE -> 14 JUNIO
+        # =====================================
+
+        invierno = dataset[
+            ~dataset.index.isin(
+                verano.index
+            )
+        ].copy()
+
+        return verano, invierno
     
     def separar_train_test(
         self,
@@ -188,6 +239,7 @@ class ModelBase:
 
             ] = True
 
+
         # =====================================
         # TRAIN / TEST
         # =====================================
@@ -199,6 +251,8 @@ class ModelBase:
         test = dataset[
             dataset["test"]
         ].copy()
+
+        self.train = train.copy()
 
         self.test = test.copy()
 
@@ -286,6 +340,121 @@ class ModelBase:
                 f"{año}-{mes:02d} -> Semana {semana}"
             )
 
+    # =====================================
+    # TRAIN / TEST TEMPORAL
+    # =====================================
+
+    def separar_train_test_temporal(
+        self,
+        porcentaje_train=0.75
+    ):
+
+        dataset = self.dataset.copy()
+
+        # =====================================
+        # ORDENAR POR FECHA
+        # =====================================
+
+        dataset = dataset.sort_values(
+            "Fecha"
+        ).copy()
+
+        # =====================================
+        # PUNTO DE CORTE
+        # =====================================
+
+        indice_corte = int(
+            len(dataset) * porcentaje_train
+        )
+
+        # =====================================
+        # TRAIN / TEST
+        # =====================================
+
+        train = dataset.iloc[
+            :indice_corte
+        ].copy()
+
+        test = dataset.iloc[
+            indice_corte:
+        ].copy()
+
+        # =====================================
+        # GUARDAR
+        # =====================================
+
+        self.train = train.copy()
+
+        self.test = test.copy()
+
+        self.X_train = train[
+            self.FEATURES
+        ]
+
+        self.y_train = train[
+            self.TARGET
+        ]
+
+        self.X_test = test[
+            self.FEATURES
+        ]
+
+        self.y_test = test[
+            self.TARGET
+        ]
+
+        # =====================================
+        # INFORMACIÓN
+        # =====================================
+
+        print()
+        print("========================")
+        print("TRAIN / TEST TEMPORAL")
+        print("========================")
+        print()
+
+        print(
+            f"Train: {len(train)} "
+            f"({len(train) / len(dataset) * 100:.1f}%)"
+        )
+
+        print(
+            f"Test: {len(test)} "
+            f"({len(test) / len(dataset) * 100:.1f}%)"
+        )
+
+        print()
+
+        print(
+            "Train:",
+            train["Fecha"].min().date(),
+            "->",
+            train["Fecha"].max().date()
+        )
+
+        print(
+            "Test:",
+            test["Fecha"].min().date(),
+            "->",
+            test["Fecha"].max().date()
+        )
+
+    def preparar_train_test(self):
+
+        if TIPO_SPLIT == "mensual":
+
+            self.separar_train_test()
+
+        elif TIPO_SPLIT == "temporal":
+
+            self.separar_train_test_temporal()
+
+        else:
+
+            raise ValueError(
+                f"TIPO_SPLIT desconocido: {TIPO_SPLIT}"
+            )
+
     def asignar_train_test(
 
         self,
@@ -303,6 +472,39 @@ class ModelBase:
 
         self.X_test = X_test
         self.y_test = y_test
+
+    # =====================================
+    # MEDIR TIEMPO DE ENTRENAMIENTO
+    # =====================================
+
+    def medir_entrenamiento(self):
+
+        inicio = time.perf_counter()
+
+        self.entrenar()
+
+        self.training_time = (
+
+            time.perf_counter() - inicio
+
+        )
+
+
+    # =====================================
+    # MEDIR TIEMPO DE PREDICCIÓN
+    # =====================================
+
+    def medir_prediccion(self):
+
+        inicio = time.perf_counter()
+
+        self.predecir()
+
+        self.prediction_time = (
+
+            time.perf_counter() - inicio
+
+        )
 
     # =====================================
     # ENTRENAR
@@ -404,6 +606,18 @@ class ModelBase:
 
         )
 
+        if self.training_time is not None:
+
+            print(
+                f"Tiempo entrenamiento: {self.training_time:.3f} s"
+            )
+
+        if self.prediction_time is not None:
+
+            print(
+                f"Tiempo predicción: {self.prediction_time*1000:.2f} ms"
+            )
+
         print("\n========================")
         print("RESULTADOS")
         print("========================\n")
@@ -473,16 +687,89 @@ class ModelBase:
         self,
         n=20
     ):
+        print("\n========================")
+        print("DEBUG MOSTRAR PREDICCIONES")
+        print("========================")
+
+        print("len test:", len(self.test))
+        print("len Fecha:", len(self.test["Fecha"]))
+        print("len Hora:", len(self.test["Hora"]))
+        print("len y_test:", len(np.asarray(self.y_test).ravel()))
+        print("len predicciones:", len(np.asarray(self.predicciones).ravel()))
+
+        # =====================================
+        # ALINEAR TEST CON LAS PREDICCIONES
+        # =====================================
+
+        # =====================================
+        # ALINEAR TEST, Y_TEST Y PREDICCIONES
+        # =====================================
+
+        y_test = np.asarray(
+            self.y_test
+        ).ravel()
+
+        predicciones = np.asarray(
+            self.predicciones
+        ).ravel()
+
+        test = self.test.copy()
+
+        # -------------------------------------
+        # COMPROBAR LONGITUDES
+        # -------------------------------------
+
+        print()
+        print("LONGITUDES ANTES DE ALINEAR")
+        print("----------------------------")
+        print("test:", len(test))
+        print("y_test:", len(y_test))
+        print("predicciones:", len(predicciones))
+
+        # -------------------------------------
+        # LONGITUD COMÚN
+        # -------------------------------------
+
+        n = min(
+            len(test),
+            len(y_test),
+            len(predicciones)
+        )
+
+        # -------------------------------------
+        # QUEDARNOS CON LAS ÚLTIMAS N FILAS
+        # -------------------------------------
+
+        test = test.iloc[-n:].copy()
+
+        y_test = y_test[-n:]
+
+        predicciones = predicciones[-n:]
+
+        # -------------------------------------
+        # COMPROBACIÓN
+        # -------------------------------------
+
+        print()
+        print("LONGITUDES DESPUÉS DE ALINEAR")
+        print("-------------------------------")
+        print("test:", len(test))
+        print("y_test:", len(y_test))
+        print("predicciones:", len(predicciones))
+
+        # =====================================
+        # CONSTRUIR RESULTADOS
+        # =====================================
 
         resultados = pd.DataFrame({
 
-            "Fecha": self.test["Fecha"].values,
+            "Fecha": test["Fecha"].values,
 
-            "Hora": self.test["Hora"].values,
+            "Hora": test["Hora"].values,
 
-            "Venta real": np.asarray(self.y_test).ravel(),
+            "Venta real": y_test,
 
-            "Predicción": self.predicciones
+            "Predicción": predicciones
 
         })
 
@@ -532,4 +819,3 @@ class ModelBase:
             ).head(20)
 
         )
-        

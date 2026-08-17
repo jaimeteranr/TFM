@@ -48,7 +48,7 @@ class RandomForestModel(ModelBase):
 
         if X_train is None:
 
-            self.separar_train_test()
+            self.preparar_train_test()
 
         else:
 

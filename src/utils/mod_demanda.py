@@ -461,6 +461,7 @@ class DemandaExtractor:
 
         fecha_fin = fecha_inicio + timedelta(days=6)
 
+
         # =====================================
         # CARGAR DATOS
         # =====================================
