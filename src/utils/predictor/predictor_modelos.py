@@ -41,7 +41,8 @@ from sklearn.metrics import (
 
 from models.mod_visualizacion_modelos import (
     comparar_modelos,
-    comparar_modelos_train
+    comparar_modelos_train,
+    mostrar_train_test_completo
 )
 
 MODELS_PATH = (
@@ -934,4 +935,104 @@ elif TIPO_PREDICCION == "mensual":
                 "LSTM"
             ],
             n=250
+        )
+
+print()
+print("========================")
+print("VISUALIZACIÓN TRAIN + TEST")
+print("========================")
+
+if TIPO_PREDICCION == "completa":
+
+    mostrar_train_test_completo(
+        [
+            modelo_dt,
+            modelo_rf,
+            modelo_xgb,
+            modelo_lstm
+        ],
+        nombres=[
+            "Decision Tree",
+            "Random Forest",
+            "XGBoost",
+            "LSTM"
+        ]
+    )
+
+elif TIPO_PREDICCION == "estacional":
+
+    print("\n---------- VERANO ----------")
+
+    mostrar_train_test_completo(
+        [
+            modelo_dt[0],
+            modelo_rf[0],
+            modelo_xgb[0],
+            modelo_lstm[0]
+        ],
+        nombres=[
+            "Decision Tree",
+            "Random Forest",
+            "XGBoost",
+            "LSTM"
+        ]
+    )
+
+    print("\n---------- INVIERNO ----------")
+
+    mostrar_train_test_completo(
+        [
+            modelo_dt[1],
+            modelo_rf[1],
+            modelo_xgb[1],
+            modelo_lstm[1]
+        ],
+        nombres=[
+            "Decision Tree",
+            "Random Forest",
+            "XGBoost",
+            "LSTM"
+        ]
+    )
+
+elif TIPO_PREDICCION == "mensual":
+
+    nombres_meses = {
+        1: "ENERO",
+        2: "FEBRERO",
+        3: "MARZO",
+        4: "ABRIL",
+        5: "MAYO",
+        6: "JUNIO",
+        7: "JULIO",
+        8: "AGOSTO",
+        9: "SEPTIEMBRE",
+        10: "OCTUBRE",
+        11: "NOVIEMBRE",
+        12: "DICIEMBRE"
+    }
+
+    for mes in range(1, 13):
+
+        if mes not in modelo_dt:
+            continue
+
+        print()
+        print(
+            f"---------- {nombres_meses[mes]} ----------"
+        )
+
+        mostrar_train_test_completo(
+            [
+                modelo_dt[mes],
+                modelo_rf[mes],
+                modelo_xgb[mes],
+                modelo_lstm[mes]
+            ],
+            nombres=[
+                "Decision Tree",
+                "Random Forest",
+                "XGBoost",
+                "LSTM"
+            ]
         )

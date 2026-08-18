@@ -425,3 +425,564 @@ def comparar_modelos_train(
         plt.tight_layout()
 
         plt.show()
+
+def mostrar_train_test_completo(
+    modelos,
+    nombres=None
+):
+
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+
+    # =====================================
+    # NOMBRES
+    # =====================================
+
+    if nombres is None:
+
+        nombres = [
+            type(modelo).__name__
+            for modelo in modelos
+        ]
+
+    if len(modelos) != len(nombres):
+
+        raise ValueError(
+            "El número de modelos y nombres debe coincidir."
+        )
+
+    # =====================================
+    # DATASET COMPLETO
+    # =====================================
+
+    modelo_referencia = modelos[0]
+
+    train = modelo_referencia.train.copy()
+    test = modelo_referencia.test.copy()
+
+    # -------------------------------------
+    # DATETIME
+    # -------------------------------------
+
+    def crear_datetime(df):
+
+        df = df.copy()
+
+        df["datetime"] = pd.to_datetime(
+            df["Fecha"].astype(str)
+            + " "
+            + df["Hora"].astype(str)
+        )
+
+        return df
+
+    train = crear_datetime(train)
+    test = crear_datetime(test)
+
+    # =====================================
+    # TRAIN
+    # =====================================
+
+    train_completo = train[
+        [
+            "datetime",
+            "ventas"
+        ]
+    ].copy()
+
+    train_completo["tipo"] = "TRAIN"
+
+    # =====================================
+    # TEST
+    # =====================================
+
+    test_completo = test[
+        [
+            "datetime",
+            "ventas"
+        ]
+    ].copy()
+
+    test_completo["tipo"] = "TEST"
+
+    # =====================================
+    # UNIR TRAIN + TEST
+    # =====================================
+
+    datos = pd.concat(
+        [
+            train_completo,
+            test_completo
+        ],
+        ignore_index=True
+    )
+
+    datos = (
+        datos
+        .sort_values(
+            ["datetime", "tipo"]
+        )
+        .drop_duplicates(
+            subset="datetime",
+            keep="last"
+        )
+        .sort_values("datetime")
+        .reset_index(drop=True)
+    )
+
+    # =====================================
+    # PREDICCIONES
+    # =====================================
+
+    predicciones = {}
+
+    for modelo, nombre in zip(
+        modelos,
+        nombres
+    ):
+
+        print()
+        print(
+            f"Generando predicciones TRAIN - {nombre}"
+        )
+
+        # =================================
+        # PREDICCIONES TRAIN
+        # =================================
+
+        if nombre == "LSTM":
+
+            pred_train = modelo.model.predict(
+                modelo.X_train,
+                verbose=0
+            )
+
+            pred_train = (
+                modelo.scaler_y
+                .inverse_transform(
+                    pred_train
+                )
+                .ravel()
+            )
+
+            # La LSTM necesita una ventana
+            # inicial de 24 observaciones.
+            #
+            # Por tanto, sus predicciones empiezan
+            # más tarde que el train original.
+
+            train_modelo = modelo.train.iloc[
+                len(modelo.train) - len(pred_train):
+            ].copy()
+
+        else:
+
+            pred_train = modelo.model.predict(
+                modelo.X_train
+            )
+
+            pred_train = np.asarray(
+                pred_train
+            ).ravel()
+
+            train_modelo = modelo.train.copy()
+
+            # Seguridad por si hubiera alguna
+            # diferencia de longitud.
+
+            if len(pred_train) < len(train_modelo):
+
+                train_modelo = train_modelo.iloc[
+                    len(train_modelo) - len(pred_train):
+                ].copy()
+
+            elif len(pred_train) > len(train_modelo):
+
+                pred_train = pred_train[
+                    :len(train_modelo)
+                ]
+
+        train_modelo = crear_datetime(
+            train_modelo
+        )
+
+        pred_train_df = pd.DataFrame({
+
+            "datetime":
+                train_modelo["datetime"].values,
+
+            "prediccion":
+                pred_train,
+
+            "tipo":
+                "TRAIN"
+
+        })
+
+        # =================================
+        # PREDICCIONES TEST
+        # =================================
+
+        pred_test = np.asarray(
+            modelo.predicciones
+        ).ravel()
+
+        test_modelo = modelo.test.copy()
+
+        test_modelo = crear_datetime(
+            test_modelo
+        )
+
+        # ---------------------------------
+        # AJUSTE LSTM
+        # ---------------------------------
+
+        if len(pred_test) < len(test_modelo):
+
+            test_modelo = test_modelo.iloc[
+                len(test_modelo) - len(pred_test):
+            ].copy()
+
+        elif len(pred_test) > len(test_modelo):
+
+            pred_test = pred_test[
+                :len(test_modelo)
+            ]
+
+        pred_test_df = pd.DataFrame({
+
+            "datetime":
+                test_modelo["datetime"].values,
+
+            "prediccion":
+                pred_test,
+
+            "tipo":
+                "TEST"
+
+        })
+
+        # =================================
+        # UNIR TRAIN + TEST
+        # =================================
+
+        pred_df = pd.concat(
+            [
+                pred_train_df,
+                pred_test_df
+            ],
+            ignore_index=True
+        )
+
+        pred_df = (
+            pred_df
+            .sort_values(
+                ["datetime", "tipo"]
+            )
+            .drop_duplicates(
+                subset="datetime",
+                keep="last"
+            )
+            .sort_values("datetime")
+            .reset_index(drop=True)
+        )
+
+        predicciones[nombre] = pred_df
+
+        print(
+            f"  TRAIN: {len(pred_train_df)} predicciones"
+        )
+
+        print(
+            f"  TEST : {len(pred_test_df)} predicciones"
+        )
+
+    # =====================================
+    # SEMANA
+    # =====================================
+
+    datos["semana_inicio"] = (
+        datos["datetime"]
+        -
+        pd.to_timedelta(
+            datos["datetime"].dt.weekday,
+            unit="D"
+        )
+    ).dt.normalize()
+
+    # =====================================
+    # INFORMACIÓN
+    # =====================================
+
+    print()
+    print("========================")
+    print("VISUALIZACIÓN TRAIN + TEST")
+    print("========================")
+    print()
+
+    print(
+        "Fecha inicial:",
+        datos["datetime"].min()
+    )
+
+    print(
+        "Fecha final:",
+        datos["datetime"].max()
+    )
+
+    print(
+        "Observaciones:",
+        len(datos)
+    )
+
+    print(
+        "TRAIN:",
+        (datos["tipo"] == "TRAIN").sum()
+    )
+
+    print(
+        "TEST:",
+        (datos["tipo"] == "TEST").sum()
+    )
+
+    # =====================================
+    # GRÁFICOS SEMANALES
+    # =====================================
+
+    semanas = (
+        datos["semana_inicio"]
+        .drop_duplicates()
+        .sort_values()
+        .tolist()
+    )
+
+    print(
+        "Semanas a visualizar:",
+        len(semanas)
+    )
+
+    for semana_inicio in semanas:
+
+        semana_fin = (
+            semana_inicio
+            + pd.Timedelta(days=6)
+        )
+
+        datos_semana = datos[
+            datos["semana_inicio"]
+            == semana_inicio
+        ].copy()
+
+        if datos_semana.empty:
+
+            continue
+
+        # =================================
+        # FIGURA
+        # =================================
+
+        plt.figure(
+            figsize=(18, 6)
+        )
+
+        # =================================
+        # ZONAS TRAIN / TEST
+        # =================================
+
+        train_semana = datos_semana[
+            datos_semana["tipo"] == "TRAIN"
+        ]
+
+        test_semana = datos_semana[
+            datos_semana["tipo"] == "TEST"
+        ]
+
+        # ---------------------------------
+        # DETECTAR BLOQUES
+        # ---------------------------------
+
+        def pintar_bloques(
+            datos_tipo,
+            color,
+            alpha,
+            etiqueta
+        ):
+
+            if datos_tipo.empty:
+                return
+
+            fechas = (
+                datos_tipo["datetime"]
+                .sort_values()
+                .tolist()
+            )
+
+            inicio_bloque = fechas[0]
+            anterior = fechas[0]
+
+            primera = True
+
+            for fecha in fechas[1:]:
+
+                diferencia = (
+                    fecha - anterior
+                )
+
+                if diferencia > pd.Timedelta(days=1):
+
+                    plt.axvspan(
+                        inicio_bloque,
+                        anterior
+                        + pd.Timedelta(hours=1),
+                        alpha=alpha,
+                        color=color,
+                        label=(
+                            etiqueta
+                            if primera
+                            else None
+                        )
+                    )
+
+                    primera = False
+
+                    inicio_bloque = fecha
+
+                anterior = fecha
+
+            plt.axvspan(
+                inicio_bloque,
+                anterior
+                + pd.Timedelta(hours=1),
+                alpha=alpha,
+                color=color,
+                label=(
+                    etiqueta
+                    if primera
+                    else None
+                )
+            )
+
+        pintar_bloques(
+            train_semana,
+            "green",
+            0.08,
+            "TRAIN"
+        )
+
+        pintar_bloques(
+            test_semana,
+            "red",
+            0.10,
+            "TEST"
+        )
+
+        # =================================
+        # VENTAS REALES
+        # =================================
+
+        plt.plot(
+            datos_semana["datetime"],
+            datos_semana["ventas"],
+            color="black",
+            linewidth=2,
+            label="Ventas reales"
+        )
+
+        # =================================
+        # PREDICCIONES
+        # =================================
+
+        for nombre in nombres:
+
+            pred_df = predicciones[nombre]
+
+            pred_semana = pred_df[
+                (
+                    pred_df["datetime"]
+                    >= datos_semana["datetime"].min()
+                )
+                &
+                (
+                    pred_df["datetime"]
+                    <= datos_semana["datetime"].max()
+                )
+            ]
+
+            if pred_semana.empty:
+
+                continue
+
+            # ---------------------------------
+            # SEPARAR TRAIN / TEST
+            # ---------------------------------
+
+            pred_train_semana = pred_semana[
+                pred_semana["tipo"] == "TRAIN"
+            ]
+
+            pred_test_semana = pred_semana[
+                pred_semana["tipo"] == "TEST"
+            ]
+
+            # ---------------------------------
+            # PREDICCIÓN TRAIN
+            # ---------------------------------
+
+            if not pred_train_semana.empty:
+
+                plt.plot(
+                    pred_train_semana["datetime"],
+                    pred_train_semana["prediccion"],
+                    linewidth=1.5,
+                    linestyle="--",
+                    label=f"Pred. TRAIN - {nombre}"
+                )
+
+            # ---------------------------------
+            # PREDICCIÓN TEST
+            # ---------------------------------
+
+            if not pred_test_semana.empty:
+
+                plt.plot(
+                    pred_test_semana["datetime"],
+                    pred_test_semana["prediccion"],
+                    linewidth=1.5,
+                    label=f"Pred. TEST - {nombre}"
+                )
+
+        # =================================
+        # TÍTULO
+        # =================================
+
+        semana_iso = (
+            semana_inicio.isocalendar().week
+        )
+
+        año = semana_inicio.year
+
+        plt.title(
+            f"Semana {semana_iso} - {año} | "
+            f"{semana_inicio:%d/%m/%Y} → "
+            f"{semana_fin:%d/%m/%Y}"
+        )
+
+        plt.xlabel(
+            "Fecha y hora"
+        )
+
+        plt.ylabel(
+            "Ventas"
+        )
+
+        plt.grid(
+            True,
+            alpha=0.25
+        )
+
+        plt.legend()
+
+        plt.tight_layout()
+
+        plt.show()

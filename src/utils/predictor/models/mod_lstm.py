@@ -22,7 +22,10 @@ from tensorflow.keras.layers import (
 from tensorflow.keras.callbacks import EarlyStopping
 
 from .mod_model_base import ModelBase
-from variables_entrada import TIPO_SPLIT
+from variables_entrada import (
+    TIPO_SPLIT,
+    USAR_VARIABLES_ADICIONALES_LSTM
+)
 
 
 SEQUENCE_LENGTH = 24
@@ -48,8 +51,33 @@ FEATURES_LSTM = [
     "hora_racing_decimal",
 
     "ventas"
-
 ]
+
+
+# ============================================================
+# VARIABLES ADICIONALES
+# ============================================================
+
+if USAR_VARIABLES_ADICIONALES_LSTM:
+
+    FEATURES_LSTM += [
+
+        "evento_importancia",
+
+        "racing_tarde",
+        "racing_noche",
+
+        "hora_fin_semana",
+
+        "ventas_lag_1h",
+        "ventas_lag_2h",
+        "ventas_lag_24h",
+        "ventas_lag_168h",
+
+        "ventas_media_3h",
+        "ventas_media_24h"
+
+    ]
 
 N_FEATURES = len(FEATURES_LSTM)
 
@@ -85,7 +113,7 @@ class LSTMModel(ModelBase):
         y = []
 
         # =====================================
-        # ORDENAR POR FECHA
+        # ORDEN TEMPORAL
         # =====================================
 
         dataset = dataset.sort_values(
@@ -93,64 +121,8 @@ class LSTMModel(ModelBase):
         ).copy()
 
         # =====================================
-        # SEPARAR POR AÑO
+        # VARIABLES
         # =====================================
-
-        for _, grupo in dataset.groupby(
-            dataset["Fecha"].dt.year
-        ):
-
-            grupo = grupo.sort_values(
-                "Fecha"
-            ).copy()
-
-            # Necesitamos al menos 25 observaciones
-            if len(grupo) <= self.sequence_length:
-                continue
-
-            variables = grupo[
-                FEATURES_LSTM
-            ].values
-
-            ventas = grupo[
-                "ventas"
-            ].values
-
-            # =================================
-            # CREAR SECUENCIAS
-            # =================================
-
-            for i in range(
-                self.sequence_length,
-                len(grupo)
-            ):
-
-                X.append(
-                    variables[
-                        i - self.sequence_length:i
-                    ]
-                )
-
-                y.append(
-                    ventas[i]
-                )
-
-        return (
-            np.array(X),
-            np.array(y)
-        )
-
-    def _crear_secuencias_continuas(
-        self,
-        dataset
-    ):
-
-        X = []
-        y = []
-
-        dataset = dataset.sort_values(
-            "Fecha"
-        ).copy()
 
         variables = dataset[
             FEATURES_LSTM
@@ -159,6 +131,10 @@ class LSTMModel(ModelBase):
         ventas = dataset[
             "ventas"
         ].values
+
+        # =====================================
+        # CREAR SECUENCIAS CONTINUAS
+        # =====================================
 
         for i in range(
             self.sequence_length,
@@ -179,6 +155,7 @@ class LSTMModel(ModelBase):
             np.array(X),
             np.array(y)
         )
+    
 
     # =====================================
     # CREAR UNA ÚNICA SECUENCIA
@@ -211,47 +188,80 @@ class LSTMModel(ModelBase):
     def _escalar(
         self,
         X_train,
+        X_val,
         X_test,
         y_train,
+        y_val,
         y_test
     ):
 
         n_train, pasos, variables = X_train.shape
+        n_val = X_val.shape[0]
         n_test = X_test.shape[0]
 
-        # -------------------------------------
-        # Escalar X
-        # -------------------------------------
+        # =====================================
+        # ESCALAR X
+        # =====================================
 
-        X_train = X_train.reshape(-1, variables)
-        X_test = X_test.reshape(-1, variables)
-
-        X_train = self.scaler_X.fit_transform(
-            X_train
+        X_train_2d = X_train.reshape(
+            -1,
+            variables
         )
 
-        X_test = self.scaler_X.transform(
-            X_test
+        X_val_2d = X_val.reshape(
+            -1,
+            variables
         )
 
-        X_train = X_train.reshape(
+        X_test_2d = X_test.reshape(
+            -1,
+            variables
+        )
+
+        # El scaler aprende SOLO de TRAIN
+
+        X_train_2d = self.scaler_X.fit_transform(
+            X_train_2d
+        )
+
+        X_val_2d = self.scaler_X.transform(
+            X_val_2d
+        )
+
+        X_test_2d = self.scaler_X.transform(
+            X_test_2d
+        )
+
+        # Volver a formato secuencial
+
+        X_train = X_train_2d.reshape(
             n_train,
             pasos,
             variables
         )
 
-        X_test = X_test.reshape(
+        X_val = X_val_2d.reshape(
+            n_val,
+            pasos,
+            variables
+        )
+
+        X_test = X_test_2d.reshape(
             n_test,
             pasos,
             variables
         )
 
-        # -------------------------------------
-        # Escalar Y
-        # -------------------------------------
+        # =====================================
+        # ESCALAR Y
+        # =====================================
 
         y_train = self.scaler_y.fit_transform(
             y_train.reshape(-1, 1)
+        )
+
+        y_val = self.scaler_y.transform(
+            y_val.reshape(-1, 1)
         )
 
         y_test = self.scaler_y.transform(
@@ -260,8 +270,10 @@ class LSTMModel(ModelBase):
 
         return (
             X_train,
+            X_val,
             X_test,
             y_train,
+            y_val,
             y_test
         )
 
@@ -277,64 +289,30 @@ class LSTMModel(ModelBase):
         self.model = Sequential()
 
         self.model.add(
-
             LSTM(
-
-                64,
-
+                32,
                 input_shape=(
-
                     self.sequence_length,
-
                     n_variables
-
-                ),
-
-                return_sequences=True
-
+                )
             )
-
         )
 
         self.model.add(
-
-            Dropout(
-                0.2
-            )
-
+            Dropout(0.2)
         )
 
         self.model.add(
-
-            LSTM(
-                32
-            )
-
-        )
-
-        self.model.add(
-
-            Dropout(
-                0.2
-            )
-
-        )
-
-        self.model.add(
-
             Dense(
                 16,
                 activation="relu"
             )
-
         )
 
         self.model.add(
-
             Dense(
                 1
             )
-
         )
 
         self.model.compile(
@@ -381,49 +359,52 @@ class LSTMModel(ModelBase):
 
         if TIPO_SPLIT == "mensual":
 
-            # ---------------------------------
-            # COMPORTAMIENTO ORIGINAL
-            # ---------------------------------
+            # =====================================
+            # TRAIN
+            # =====================================
 
-            X_train, y_train = self._crear_secuencias_continuas(
+            X_train, y_train = self._crear_secuencias(
                 train
             )
 
-            X_test, y_test = self._crear_secuencias_continuas(
+            # =====================================
+            # TEST
+            # =====================================
+
+            X_test, y_test = self._crear_secuencias(
                 test
             )
 
-            self.test = test.iloc[
+            # Las primeras 24 observaciones no pueden
+            # tener predicción porque se utilizan como
+            # contexto para construir la primera secuencia.
+
+            self.train = train.iloc[
                 self.sequence_length:
             ].copy()
 
-            self.train = train.iloc[
+            self.test = test.iloc[
                 self.sequence_length:
             ].copy()
 
 
         elif TIPO_SPLIT == "temporal":
 
-            # ---------------------------------
+            # =====================================
             # TRAIN
-            # ---------------------------------
+            # =====================================
 
             X_train, y_train = self._crear_secuencias(
                 train
             )
 
-            # ---------------------------------
-            # ÚLTIMAS 24 HORAS DEL TRAIN
-            # COMO CONTEXTO DEL TEST
-            # ---------------------------------
+            # =====================================
+            # CONTEXTO PARA TEST
+            # =====================================
 
             contexto = train.iloc[
                 -self.sequence_length:
             ].copy()
-
-            # ---------------------------------
-            # CONTEXTO + TEST
-            # ---------------------------------
 
             test_con_contexto = pd.concat(
                 [
@@ -433,42 +414,91 @@ class LSTMModel(ModelBase):
                 ignore_index=True
             )
 
-            # ---------------------------------
-            # SECUENCIAS TEST
-            # ---------------------------------
+            # =====================================
+            # TEST
+            # =====================================
 
             X_test, y_test = self._crear_secuencias(
                 test_con_contexto
             )
 
-            # ---------------------------------
+            # =====================================
             # REFERENCIAS
-            # ---------------------------------
+            # =====================================
 
             self.train = train.iloc[
                 self.sequence_length:
             ].copy()
 
-            self.test = test.iloc[
-                self.sequence_length:
-            ].copy()
+            self.test = test.copy()
+
 
         else:
- 
+
             raise ValueError(
                 f"TIPO_SPLIT desconocido: {TIPO_SPLIT}"
             )
 
         # =====================================
+        # VALIDACIÓN TEMPORAL
+        # =====================================
+
+        porcentaje_validacion = 0.15
+
+        n_validacion = int(
+            len(X_train) * porcentaje_validacion
+        )
+
+        if n_validacion <= 0:
+
+            raise ValueError(
+                "No hay suficientes datos para crear "
+                "el conjunto de validación."
+            )
+
+        # -------------------------------------
+        # TRAIN FINAL
+        # -------------------------------------
+
+        X_train_final = X_train[
+            :-n_validacion
+        ]
+
+        y_train_final = y_train[
+            :-n_validacion
+        ]
+
+        # -------------------------------------
+        # VALIDATION
+        # -------------------------------------
+
+        X_val = X_train[
+            -n_validacion:
+        ]
+
+        y_val = y_train[
+            -n_validacion:
+        ]
+
+        # =====================================
         # ESCALAR
         # =====================================
 
-        X_train, X_test, y_train, y_test = self._escalar(
+        (
+            X_train_final,
+            X_val,
+            X_test,
+            y_train_final,
+            y_val,
+            y_test
+        ) = self._escalar(
 
-            X_train,
+            X_train_final,
+            X_val,
             X_test,
 
-            y_train,
+            y_train_final,
+            y_val,
             y_test
 
         )
@@ -477,10 +507,12 @@ class LSTMModel(ModelBase):
         # GUARDAR
         # =====================================
 
-        self.X_train = X_train
+        self.X_train = X_train_final
+        self.X_val = X_val
         self.X_test = X_test
 
-        self.y_train = y_train
+        self.y_train = y_train_final
+        self.y_val = y_val
         self.y_test = y_test
 
         # =====================================
@@ -490,6 +522,7 @@ class LSTMModel(ModelBase):
         self._construir_modelo(
             N_FEATURES
         )
+
 
         # =====================================
         # EARLY STOPPING
@@ -509,17 +542,17 @@ class LSTMModel(ModelBase):
         # ENTRENAMIENTO
         # =====================================
 
-        self.model.fit(
+        self.history = self.model.fit(
 
-            self.X_train,
+            X_train_final,
 
-            self.y_train,
+            y_train_final,
 
             validation_data=(
 
-                self.X_test,
+                X_val,
 
-                self.y_test
+                y_val
 
             ),
 
@@ -533,8 +566,50 @@ class LSTMModel(ModelBase):
 
         )
 
-        print()
+        # =====================================
+        # GRÁFICA DE PÉRDIDA
+        # =====================================
 
+        import matplotlib.pyplot as plt
+
+        plt.figure(
+            figsize=(10, 5)
+        )
+
+        plt.plot(
+            self.history.history["loss"],
+            label="Train"
+        )
+
+        plt.plot(
+            self.history.history["val_loss"],
+            label="Validation"
+        )
+
+        plt.xlabel(
+            "Época"
+        )
+
+        plt.ylabel(
+            "Loss"
+        )
+
+        plt.title(
+            "Evolución de la función de pérdida - LSTM"
+        )
+
+        plt.grid(
+            True,
+            alpha=0.3
+        )
+
+        plt.legend()
+
+        plt.tight_layout()
+
+        plt.show()
+
+        print()
         print(
             "LSTM entrenada correctamente."
         )

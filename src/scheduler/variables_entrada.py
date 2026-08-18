@@ -28,7 +28,7 @@ MODELO_PREDICCION = "xgboost"
 # "random_forest"
 # "decision_tree"
 
-TIPO_PREDICCION = "mensual"
+TIPO_PREDICCION = "completa"
 
 # Opciones:
 # "estacional"
@@ -44,6 +44,12 @@ TIPO_SPLIT = "mensual"
 # Opciones:
 # "mensual" 1 semana al mes para test
 # "temporal" 25% final para test
+
+# =====================================
+# USAR VARIABLES ADICIONALES Y LAGS EN LSTM
+# =====================================
+
+USAR_VARIABLES_ADICIONALES_LSTM = True
 
 # =====================================
 # DEBUG:
