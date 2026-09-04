@@ -2,7 +2,8 @@
 # SEMANA A PLANIFICAR
 # =====================================
 
-FECHA_INICIO_SEMANA = "2026-08-24" # Formato: "YYYY-MM-DD"
+MODO_EVALUACION_MASIVA = False
+FECHA_INICIO_SEMANA = "2026-08-10" # Formato: "YYYY-MM-DD"
 
 # =====================================
 # SOLVER
@@ -87,6 +88,10 @@ ACTIVAR_DESCANSOS = True
 
 USAR_FECHA_BAJA = False
 
+LIMITAR_TRABAJADORES = True
+
+NUMERO_TRABAJADORES = 7
+
 # =====================================
 # TURNOS BLOQUEADOS, SI SE QUIERE USAR, DEBE EXISTIR EL ARCHIVO "turnos_bloqueados.xlsx"
 # =====================================
@@ -109,7 +114,7 @@ OBLIGAR_APERTURA_HASTA_21 = True
 # MINIMO PERSONAL TARDE
 # =====================================
 
-ACTIVAR_MIN_PERSONAS_TARDE = True
+ACTIVAR_MIN_PERSONAS_TARDE = False
 
 MIN_PERSONAS_TARDE = 2
 

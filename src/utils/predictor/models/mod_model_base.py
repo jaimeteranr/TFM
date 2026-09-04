@@ -81,18 +81,18 @@ class ModelBase:
         "prefestivo",
         "fin_semana",
         "evento",
-        #"evento_importancia",
+        "evento_importancia",
         "racing",
         "hora_racing_decimal",
-        #"racing_tarde",
-        #"racing_noche",
-        #"hora_fin_semana",
-        #"ventas_lag_1h",
-        #"ventas_lag_2h",
-        #"ventas_lag_24h",
-        #"ventas_lag_168h",
-        #"ventas_media_3h",
-        #"ventas_media_24h"
+        "racing_tarde",
+        "racing_noche",
+        "hora_fin_semana",
+        "ventas_lag_1h",
+        "ventas_lag_2h",
+        "ventas_lag_24h",
+        "ventas_lag_168h",
+        "ventas_media_3h",
+        "ventas_media_24h"
 
     ]
 
@@ -479,14 +479,20 @@ class ModelBase:
 
     def medir_entrenamiento(self):
 
+        print(
+            f"\n>>> MIDIENDO ENTRENAMIENTO: {type(self).__name__}"
+        )
+
         inicio = time.perf_counter()
 
         self.entrenar()
 
         self.training_time = (
-
             time.perf_counter() - inicio
+        )
 
+        print(
+            f">>> TIEMPO: {self.training_time:.3f} s"
         )
 
 
@@ -496,14 +502,20 @@ class ModelBase:
 
     def medir_prediccion(self):
 
+        print(
+            f"\n>>> MIDIENDO PREDICCIÓN: {type(self).__name__}"
+        )
+
         inicio = time.perf_counter()
 
         self.predecir()
 
         self.prediction_time = (
-
             time.perf_counter() - inicio
+        )
 
+        print(
+            f">>> TIEMPO: {self.prediction_time * 1000:.2f} ms"
         )
 
     # =====================================

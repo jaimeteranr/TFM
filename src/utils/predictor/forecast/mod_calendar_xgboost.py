@@ -32,18 +32,18 @@ FEATURES = [
             "prefestivo",
             "fin_semana",
             "evento",
-            #"evento_importancia",
+            "evento_importancia",
             "racing",
             "hora_racing_decimal",
-            #"racing_tarde",
-            #"racing_noche",
-            #"hora_fin_semana",
-            #"ventas_lag_1h",
-            #"ventas_lag_2h",
-            #"ventas_lag_24h",
-            #"ventas_lag_168h",
-            #"ventas_media_3h",
-            #"ventas_media_24h"
+            "racing_tarde",
+            "racing_noche",
+            "hora_fin_semana",
+            "ventas_lag_1h",
+            "ventas_lag_2h",
+            "ventas_lag_24h",
+            "ventas_lag_168h",
+            "ventas_media_3h",
+            "ventas_media_24h"
         ]
 
 XGBOOST_MODEL_PATH = (

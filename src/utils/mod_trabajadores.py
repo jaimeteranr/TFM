@@ -1,28 +1,12 @@
-"""
-Módulo encargado de gestionar la disponibilidad de trabajadores para la
-planificación.
-
-Obtiene el conjunto de trabajadores activos en función de la configuración
-del sistema y de la fecha de planificación, proporcionando la información
-necesaria para que el planificador genere los calendarios de trabajo.
-"""
-
 import pandas as pd
 
-
-from variables_entrada import (USAR_FECHA_BAJA, MODO_DEBUG)
+from variables_entrada import (
+    USAR_FECHA_BAJA,
+    MODO_DEBUG
+)
 
 
 class Trabajadores:
-    """
-    Gestiona la obtención de los trabajadores disponibles para la
-    planificación.
-
-    Determina qué trabajadores pueden participar en la generación del
-    calendario según los criterios de activación definidos por el sistema,
-    proporcionando un conjunto de empleados preparado para ser utilizado por
-    los procesos de planificación.
-    """
 
     def obtener_trabajadores_activos(
         self,
@@ -55,27 +39,19 @@ class Trabajadores:
         if USAR_FECHA_BAJA:
 
             activos = trabajadores[
-
                 (
                     trabajadores["fecha_alta"]
                     <= fecha
                 )
-
                 &
-
                 (
-
                     trabajadores["fecha_baja"].isna()
-
                     |
-
                     (
                         trabajadores["fecha_baja"]
                         >= fecha
                     )
-
                 )
-
             ].copy()
 
         # =========================
@@ -85,9 +61,7 @@ class Trabajadores:
         else:
 
             activos = trabajadores[
-
                 trabajadores["Activo"] == 1
-
             ].copy()
 
         activos = activos.sort_values(
@@ -97,12 +71,12 @@ class Trabajadores:
         activos = activos.reset_index(
             drop=True
         )
-        
+
         if MODO_DEBUG:
+
             print("\nDEBUG TRABAJADORES")
 
             print(
-
                 activos[
                     [
                         "id",
@@ -112,7 +86,6 @@ class Trabajadores:
                         "cierre"
                     ]
                 ]
-
             )
 
         return activos

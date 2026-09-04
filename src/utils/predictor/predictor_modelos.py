@@ -91,7 +91,9 @@ def calcular_metricas(modelo):
     return {
         "MAE": mae,
         "RMSE": rmse,
-        "R2": r2
+        "R2": r2,
+        "Tiempo entrenamiento (s)": modelo.training_time,
+        "Tiempo predicción (ms)": modelo.prediction_time * 1000
     }
 
 def evaluar_un_modelo(
@@ -389,6 +391,10 @@ def evaluar_modelo(
     # ESTACIONAL
     # =====================================
 
+    # =====================================
+    # ESTACIONAL
+    # =====================================
+
     elif TIPO_PREDICCION == "estacional":
 
         modelo_verano, modelo_invierno = resultado
@@ -408,32 +414,41 @@ def evaluar_modelo(
                 metricas
             )
 
+            print()
+            print("========================")
             print(
                 f"{nombre} - {temporada}"
             )
-
-            print(metricas)
-
-                # MEDIA
-
-            tabla = pd.DataFrame(resultados)
-
-            print()
-            print("------------------------")
-            print("MEDIA ESTACIONAL")
-            print("------------------------")
+            print("========================")
 
             print(
-                tabla[
-                    [
-                        "MAE",
-                        "RMSE",
-                        "R2"
-                    ]
-                ].mean()
+                metricas
             )
 
-            return
+        # =====================================
+        # MEDIA ESTACIONAL
+        # =====================================
+
+        tabla = pd.DataFrame(
+            resultados
+        )
+
+        print()
+        print("------------------------")
+        print("MEDIA ESTACIONAL")
+        print("------------------------")
+
+        print(
+            tabla[
+                [
+                    "MAE",
+                    "RMSE",
+                    "R2"
+                ]
+            ].mean()
+        )
+
+        return
 
 
     # =====================================

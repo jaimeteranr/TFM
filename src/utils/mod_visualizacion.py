@@ -317,7 +317,7 @@ class Visualizacion:
 
         titulo = (
 
-            "VACANZE ROMANE - HORARIO SEMANA "
+            " HELADERÍA - HORARIO SEMANA "
 
             +
 

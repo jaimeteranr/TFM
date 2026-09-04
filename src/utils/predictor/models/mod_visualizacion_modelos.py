@@ -10,90 +10,321 @@ import numpy as np
 def comparar_modelos(
     modelos,
     nombres=None,
-    n=250
+    n=None
 ):
 
-    y_real = np.asarray(
-        modelos[0].y_test
-    ).ravel()
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import matplotlib.dates as mdates
+
+    # =====================================
+    # NOMBRES
+    # =====================================
 
     if nombres is None:
 
         nombres = [
-
             type(modelo).__name__
-
             for modelo in modelos
-
         ]
 
-    # =====================================
-    # NÚMERO DE OBSERVACIONES DISPONIBLES
-    # =====================================
+    if len(modelos) != len(nombres):
 
-    n_disponible = min(
-        len(modelo.test)
-        for modelo in modelos
-    )
-
-    n_real = min(
-        n,
-        n_disponible
-    )
-
-    print(
-        f"Observaciones utilizadas: "
-        f"{n_real} de {n_disponible} disponibles"
-    )
-
-    tam_bloque = 50
-
-    for inicio in range(
-        0,
-        n_real,
-        tam_bloque
-    ):
-
-        fin = min(
-            inicio + tam_bloque,
-            n_real
+        raise ValueError(
+            "El número de modelos y nombres debe coincidir."
         )
 
-        fecha_inicio = modelos[0].test.iloc[inicio]["Fecha"]
-        hora_inicio = modelos[0].test.iloc[inicio]["Hora"]
+    # =====================================
+    # MODELO DE REFERENCIA
+    # =====================================
 
-        fecha_fin = modelos[0].test.iloc[fin - 1]["Fecha"]
-        hora_fin = modelos[0].test.iloc[fin - 1]["Hora"]
+    modelo = modelos[0]
 
-        plt.figure(figsize=(16,5))
+    y_real = np.asarray(
+        modelo.y_test
+    ).ravel()
+
+    test = modelo.test.copy()
+
+    # =====================================
+    # DATETIME
+    # =====================================
+
+    test["datetime"] = pd.to_datetime(
+        test["Fecha"].astype(str)
+        + " "
+        + test["Hora"].astype(str)
+    )
+
+    # =====================================
+    # ORDEN TEMPORAL
+    # =====================================
+
+    orden = np.argsort(
+        test["datetime"].values
+    )
+
+    test = test.iloc[orden].copy()
+
+    y_real = y_real[orden]
+
+    # =====================================
+    # SEMANAS DEL TEST
+    # =====================================
+
+    test["semana_inicio"] = (
+        test["datetime"]
+        -
+        pd.to_timedelta(
+            test["datetime"].dt.weekday,
+            unit="D"
+        )
+    ).dt.normalize()
+
+    semanas = (
+        test["semana_inicio"]
+        .drop_duplicates()
+        .sort_values()
+        .tolist()
+    )
+
+    print()
+    print("========================")
+    print("GRÁFICAS SEMANALES DEL TEST")
+    print("========================")
+    print()
+    print(
+        "Semanas a visualizar:",
+        len(semanas)
+    )
+
+    # =====================================
+    # RECORRER TODAS LAS SEMANAS
+    # =====================================
+
+    for semana_inicio in semanas:
+
+        semana_fin = (
+            semana_inicio
+            + pd.Timedelta(days=7)
+        )
+
+        # ---------------------------------
+        # DATOS DE ESTA SEMANA
+        # ---------------------------------
+
+        mascara_semana = (
+            test["semana_inicio"]
+            == semana_inicio
+        )
+
+        test_semana = test[
+            mascara_semana
+        ].copy()
+
+        indices_semana = np.where(
+            mascara_semana
+        )[0]
+
+        if len(test_semana) == 0:
+
+            continue
+
+        # =================================
+        # FIGURA
+        # =================================
+
+        plt.figure(
+            figsize=(18, 6)
+        )
+
+        # =================================
+        # VENTAS REALES
+        # =================================
+
         plt.plot(
-            range(inicio, fin),
-            y_real[inicio:fin],
-            linewidth=3,
+            test_semana["datetime"],
+            y_real[indices_semana],
             color="black",
+            linewidth=2.5,
             label="Ventas reales"
         )
 
-        for modelo, nombre in zip(modelos, nombres):
+        # =================================
+        # PREDICCIONES
+        # =================================
+
+        for modelo_actual, nombre in zip(
+            modelos,
+            nombres
+        ):
+
+            pred = np.asarray(
+                modelo_actual.predicciones
+            ).ravel()
+
+            test_modelo = modelo_actual.test.copy()
+
+            # ---------------------------------
+            # Alinear predicción / test
+            # ---------------------------------
+
+            if len(pred) < len(test_modelo):
+
+                test_modelo = test_modelo.iloc[
+                    len(test_modelo) - len(pred):
+                ].copy()
+
+            elif len(pred) > len(test_modelo):
+
+                pred = pred[
+                    :len(test_modelo)
+                ]
+
+            # ---------------------------------
+            # DATETIME
+            # ---------------------------------
+
+            test_modelo["datetime"] = pd.to_datetime(
+                test_modelo["Fecha"].astype(str)
+                + " "
+                + test_modelo["Hora"].astype(str)
+            )
+
+            # ---------------------------------
+            # ORDEN TEMPORAL
+            # ---------------------------------
+
+            orden_modelo = np.argsort(
+                test_modelo["datetime"].values
+            )
+
+            test_modelo = test_modelo.iloc[
+                orden_modelo
+            ].copy()
+
+            pred = pred[
+                orden_modelo
+            ]
+
+            # ---------------------------------
+            # SEMANA
+            # ---------------------------------
+
+            mascara_modelo = (
+                (
+                    test_modelo["datetime"]
+                    >= semana_inicio
+                )
+                &
+                (
+                    test_modelo["datetime"]
+                    < semana_fin
+                )
+            )
+
+            if not mascara_modelo.any():
+
+                continue
 
             plt.plot(
-                range(inicio, fin),
-                np.asarray(modelo.predicciones).ravel()[inicio:fin],
+                test_modelo.loc[
+                    mascara_modelo,
+                    "datetime"
+                ],
+                pred[
+                    mascara_modelo.values
+                ],
+                linewidth=1.5,
                 label=nombre
             )
 
-        plt.title(
-            f"Observaciones {inicio}-{fin-1} | "
-            f"{fecha_inicio.strftime('%d/%m/%Y')} {hora_inicio} → "
-            f"{fecha_fin.strftime('%d/%m/%Y')} {hora_fin}"
-        )
-        plt.xlabel("Observación")
-        plt.ylabel("Ventas")
-        plt.grid(True)
-        plt.legend()
-        plt.tight_layout()
-        plt.show()
+        # =================================
+        # LÍNEAS DE CAMBIO DE DÍA
+        # =================================
 
+        dias = pd.date_range(
+            start=semana_inicio + pd.Timedelta(days=1),
+            end=semana_fin - pd.Timedelta(days=1),
+            freq="D"
+        )
+
+        for dia in dias:
+
+            plt.axvline(
+                dia,
+                color="gray",
+                linestyle="--",
+                linewidth=0.8,
+                alpha=0.7
+            )
+
+        # =================================
+        # EJE X
+        # =================================
+
+        ax = plt.gca()
+
+        ax.xaxis.set_major_locator(
+            mdates.HourLocator(
+                interval=3
+            )
+        )
+
+        ax.xaxis.set_major_formatter(
+            mdates.DateFormatter(
+                "%d/%m %H:%M"
+            )
+        )
+
+        plt.xticks(
+            rotation=45,
+            ha="right"
+        )
+
+        # =================================
+        # TÍTULO
+        # =================================
+
+        fecha_ultima = (
+            semana_fin
+            - pd.Timedelta(
+                hours=1
+            )
+        )
+
+        semana_iso = (
+            semana_inicio
+            .isocalendar()
+            .week
+        )
+
+        plt.title(
+            f"Semana {semana_iso} | "
+            f"{semana_inicio:%d/%m/%Y} → "
+            f"{fecha_ultima:%d/%m/%Y}"
+        )
+
+        plt.xlabel(
+            "Día y hora"
+        )
+
+        plt.ylabel(
+            "Ventas"
+        )
+
+        plt.grid(
+            True,
+            alpha=0.25
+        )
+
+        plt.legend()
+
+        plt.tight_layout()
+
+        plt.show()
+    
 # =====================================
 # COMPARAR MODELOS - TRAIN
 # =====================================
